@@ -36,10 +36,13 @@ def setup_logging():
     # Configure Loguru
     logger.remove() # Remove default handler
     
+    # patcher to ensure request_id exists
+    logger.configure(patcher=lambda record: record["extra"].setdefault("request_id", "N/A"))
+    
     # Console Sink
     logger.add(
         sys.stderr,
-        format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
+        format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <magenta>{extra[request_id]}</magenta> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
         level="INFO",
     )
 
@@ -50,5 +53,6 @@ def setup_logging():
         retention="30 days",
         compression="zip",
         enqueue=True,
-        level="INFO"
+        level="INFO",
+        format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[request_id]} | {name}:{function}:{line} - {message}"
     )

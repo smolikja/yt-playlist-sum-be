@@ -3,6 +3,7 @@ from app.schemas.request import PlaylistRequest
 from app.schemas.response import SummaryResponse
 from app.services import youtube, processor, llm
 from loguru import logger
+import time
 
 router = APIRouter()
 
@@ -12,7 +13,10 @@ async def summarize_playlist(request: PlaylistRequest):
     try:
         # 1. Extract Video IDs
         logger.info(f"Extracting video IDs from: {request.url}")
+        start_time = time.perf_counter()
         video_ids = youtube.extract_video_ids(str(request.url))
+        duration = time.perf_counter() - start_time
+        logger.info(f"Video ID extraction completed in {duration:.2f}s")
         
         if not video_ids:
             logger.warning(f"No videos found for URL: {request.url}")
@@ -25,7 +29,10 @@ async def summarize_playlist(request: PlaylistRequest):
 
         # 2. Fetch Transcripts
         logger.info("Fetching transcripts...")
+        start_time = time.perf_counter()
         transcripts_data = await youtube.fetch_transcripts(video_ids)
+        duration = time.perf_counter() - start_time
+        logger.info(f"Transcript fetching completed in {duration:.2f}s")
         
         # Check if we actually got any usable text
         valid_transcripts = [t for t in transcripts_data if t.get("transcript")]
@@ -39,10 +46,14 @@ async def summarize_playlist(request: PlaylistRequest):
         # 3. Process Data for LLM
         logger.info("Processing transcript context...")
         context_text = processor.prepare_transcript_context(transcripts_data)
+        logger.info(f"Context size: {len(context_text)} characters")
 
         # 4. Generate Summary with Gemini
         logger.info("Generating summary with Gemini...")
+        start_time = time.perf_counter()
         summary_md = await llm.generate_playlist_summary(context_text)
+        duration = time.perf_counter() - start_time
+        logger.info(f"Summary generation completed in {duration:.2f}s")
 
         # 5. Return Response
         logger.info("Request processed successfully (HTTP 200).")

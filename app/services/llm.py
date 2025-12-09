@@ -29,4 +29,7 @@ async def generate_playlist_summary(context_text: str) -> str:
     response = await model.generate_content_async(prompt)
     logger.info("Received response from Gemini.")
     
+    if response.usage_metadata:
+        logger.info(f"Token usage: {response.usage_metadata}")
+    
     return response.text
