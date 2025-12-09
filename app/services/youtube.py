@@ -49,9 +49,11 @@ async def fetch_transcripts(video_ids: List[str]) -> List[Dict[str, Any]]:
     for video_id in video_ids:
         try:
             # Offload the blocking API call to a separate thread to avoid blocking the asyncio event loop
-            transcript = await asyncio.to_thread(
-                YouTubeTranscriptApi.get_transcript, video_id, languages=['en']
-            )
+            def fetch_transcript_sync(vid):
+                # Instantiate API per request/thread as recommended by library docs for thread safety
+                return YouTubeTranscriptApi().fetch(vid, languages=['en'])
+
+            transcript = await asyncio.to_thread(fetch_transcript_sync, video_id)
             results.append({
                 "video_id": video_id,
                 "transcript": transcript
