@@ -14,6 +14,27 @@ async def summarize_playlist(
     yt_service: YouTubeService = Depends(get_youtube_service),
     llm_service: LLMService = Depends(get_llm_service)
 ):
+    """
+    Summarizes a YouTube playlist by extracting video transcripts and processing them with Gemini.
+
+    This endpoint performs the following steps:
+    1.  **Extracts Metadata**: uses `yt-dlp` to get video IDs and titles from the playlist URL.
+    2.  **Fetches Transcripts**: Checks the database cache for transcripts; fetches missing ones from YouTube concurrently.
+    3.  **Generates Summary**: Sends the combined transcript data to the Gemini API to generate a concise summary.
+
+    Args:
+        request (PlaylistRequest): The request body containing the playlist URL.
+        yt_service (YouTubeService): Injected service for YouTube operations.
+        llm_service (LLMService): Injected service for LLM operations.
+
+    Returns:
+        SummaryResult: A JSON object containing the generated summary text.
+
+    Raises:
+        HTTPException (400): If no videos are found in the playlist.
+        HTTPException (404): If no transcripts could be retrieved for any video.
+        HTTPException (500): For server-side errors during processing.
+    """
     logger.info(f"Incoming request for URL: {request.url}")
     try:
         # 1. Extract Playlist Info (Video IDs, Titles)

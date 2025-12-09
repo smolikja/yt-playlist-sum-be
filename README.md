@@ -55,8 +55,27 @@ A FastAPI-based backend application designed to summarize YouTube playlists usin
 
     ```env
     GEMINI_API_KEY=your_actual_gemini_api_key
+    
+    # For SQLite (default, easy setup)
     DATABASE_URL=sqlite:///./sql_app.db
+    
+    # For PostgreSQL (recommended for production)
+    # DATABASE_URL=postgresql+asyncpg://user:password@localhost/dbname
     ```
+
+### Database Setup
+
+This project uses **Alembic** for database migrations. Before running the application, you must initialize the database schema.
+
+1. **Run Migrations:**
+
+    Apply the latest database changes:
+
+    ```bash
+    uv run alembic upgrade head
+    ```
+    
+    This command will create the necessary tables (e.g., `videos`) in your configured database.
 
 ### Running the Application
 
