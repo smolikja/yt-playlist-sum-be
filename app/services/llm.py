@@ -60,7 +60,7 @@ async def generate_playlist_summary(playlist: Playlist) -> SummaryResult:
         logger.info(f"Token usage: {response.usage_metadata}")
     
     return SummaryResult(
-        playlist_title=playlist.title or "Summarized Playlist",
+        playlist_title=playlist.title,
         video_count=len(playlist.videos),
         summary_markdown=response.text
     )

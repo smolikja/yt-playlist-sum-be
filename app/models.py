@@ -41,7 +41,7 @@ class Playlist(BaseModel):
     videos: List[Video] = Field(default_factory=list)
 
 class SummaryResult(BaseModel):
-    playlist_title: str
+    playlist_title: Optional[str]
     video_count: int
     summary_markdown: str
 
