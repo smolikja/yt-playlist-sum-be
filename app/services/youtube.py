@@ -3,7 +3,9 @@ import random
 from typing import List, Dict, Any
 from yt_dlp import YoutubeDL
 from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound
+from youtube_transcript_api.proxies import GenericProxyConfig
 from loguru import logger
+from app.services.proxy import ProxyService
 
 def extract_video_ids(playlist_url: str) -> List[str]:
     """
@@ -49,8 +51,18 @@ async def fetch_transcripts(video_ids: List[str]) -> List[Dict[str, Any]]:
         try:
             # Offload the blocking API call to a separate thread to avoid blocking the asyncio event loop
             def fetch_transcript_sync(vid):
+                # Configure proxy if available
+                proxies = ProxyService.get_proxies()
+                if proxies:
+                    proxy_conf = GenericProxyConfig(
+                        http_url=proxies.get("http"), 
+                        https_url=proxies.get("https")
+                    )
+                else:
+                    proxy_conf = None
+                
                 # Instantiate API per request/thread as recommended by library docs for thread safety
-                return YouTubeTranscriptApi().fetch(vid, languages=['en'])
+                return YouTubeTranscriptApi(proxy_config=proxy_conf).fetch(vid, languages=['en'])
 
             transcript = await asyncio.to_thread(fetch_transcript_sync, video_id)
             results.append({
