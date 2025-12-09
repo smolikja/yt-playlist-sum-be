@@ -31,8 +31,6 @@ async def request_context_middleware(request: Request, call_next):
 
 app.include_router(api_router, prefix="/api/v1")
 
-app.include_router(api_router, prefix="/api/v1")
-
 @app.get("/health")
 async def health_check():
     return {"status": "ok", "project": settings.PROJECT_NAME}
