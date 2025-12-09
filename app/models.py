@@ -1,5 +1,21 @@
 from typing import List, Optional
-from pydantic import BaseModel, HttpUrl, field_validator, Field
+from pydantic import BaseModel, HttpUrl, field_validator, Field, ConfigDict
+
+# --- Internal Parsing Models (yt-dlp) ---
+
+class YtDlpEntry(BaseModel):
+    id: Optional[str] = None
+    title: Optional[str] = None
+    url: Optional[str] = None
+    
+    model_config = ConfigDict(extra='ignore')
+
+class YtDlpResponse(BaseModel):
+    id: Optional[str] = None
+    title: Optional[str] = None
+    entries: Optional[List[YtDlpEntry]] = None
+    
+    model_config = ConfigDict(extra='ignore')
 
 # --- Core Data Models ---
 

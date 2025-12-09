@@ -6,7 +6,7 @@ from youtube_transcript_api.proxies import GenericProxyConfig
 from loguru import logger
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from app.services.proxy import ProxyService
-from app.models import Playlist, Video, TranscriptSegment
+from app.models import Playlist, Video, TranscriptSegment, YtDlpResponse
 
 # Limit concurrent requests to avoid overwhelming proxies or YouTube
 CONCURRENCY_LIMIT = 5
@@ -27,26 +27,29 @@ def extract_playlist_info(playlist_url: str) -> Playlist:
         try:
             info_dict = ydl.extract_info(playlist_url, download=False)
             
+            # Parse raw dict into Pydantic model immediately for type safety
+            yt_data = YtDlpResponse(**info_dict)
+            
             videos: List[Video] = []
             
-            if 'entries' not in info_dict:
-                # Could be a single video URL provided instead of playlist
-                if 'id' in info_dict:
-                    videos.append(Video(
-                        id=info_dict['id'],
-                        title=info_dict.get('title')
-                    ))
-            else:
-                for entry in info_dict['entries']:
-                    if entry and 'id' in entry:
+            if yt_data.entries:
+                for entry in yt_data.entries:
+                    # YtDlpEntry ensures id is present
+                    if entry.id:
                         videos.append(Video(
-                            id=entry['id'],
-                            title=entry.get('title')
+                            id=entry.id,
+                            title=entry.title
                         ))
+            elif yt_data.id:
+                # Could be a single video URL provided instead of playlist
+                videos.append(Video(
+                    id=yt_data.id,
+                    title=yt_data.title
+                ))
             
             return Playlist(
                 url=playlist_url,
-                title=info_dict.get('title', 'Unknown Playlist'),
+                title=yt_data.title,
                 videos=videos
             )
 
