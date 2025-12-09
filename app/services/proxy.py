@@ -1,15 +1,16 @@
-from typing import Dict, Optional
+from typing import Optional
 import uuid
 from loguru import logger
 from app.core.config import settings
+from app.models import ProxyConfig
 
 class ProxyService:
     @staticmethod
-    def get_proxies() -> Optional[Dict[str, str]]:
+    def get_proxies() -> Optional[ProxyConfig]:
         """
         Constructs the authenticated proxy URL string for DataImpulse.
         Appends a random session ID to the login to force a new IP for every request.
-        Returns a dictionary compatible with requests/youtube-transcript-api.
+        Returns a ProxyConfig object.
         """
         if not (settings.DATAIMPULSE_HOST and settings.DATAIMPULSE_PORT and 
                 settings.DATAIMPULSE_LOGIN and settings.DATAIMPULSE_PASSWORD):
@@ -30,8 +31,7 @@ class ProxyService:
 
         logger.info(f"Fetching transcript using DataImpulse proxy configuration (Session: {session_id})...")
         
-        # Return dict expected by requests/youtube-transcript-api
-        return {
-            "http": proxy_url,
-            "https": proxy_url
-        }
+        return ProxyConfig(
+            http=proxy_url,
+            https=proxy_url
+        )

@@ -1,19 +1,20 @@
 import asyncio
-from typing import List, Dict, Any, Optional
+from typing import List, Optional, Union
 from yt_dlp import YoutubeDL
 from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound
 from youtube_transcript_api.proxies import GenericProxyConfig
 from loguru import logger
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from app.services.proxy import ProxyService
+from app.models import Playlist, Video, TranscriptSegment
 
 # Limit concurrent requests to avoid overwhelming proxies or YouTube
 CONCURRENCY_LIMIT = 5
 
-def extract_video_ids(playlist_url: str) -> List[str]:
+def extract_playlist_info(playlist_url: str) -> Playlist:
     """
-    Extracts video IDs from a YouTube playlist URL using yt-dlp.
-    Uses 'extract_flat=True' for performance.
+    Extracts video IDs and basic info from a YouTube playlist URL using yt-dlp.
+    Returns a Playlist model with a list of Video objects (initially without transcripts).
     """
     ydl_opts = {
         'extract_flat': True,
@@ -26,21 +27,32 @@ def extract_video_ids(playlist_url: str) -> List[str]:
         try:
             info_dict = ydl.extract_info(playlist_url, download=False)
             
+            videos: List[Video] = []
+            
             if 'entries' not in info_dict:
                 # Could be a single video URL provided instead of playlist
                 if 'id' in info_dict:
-                    return [info_dict['id']]
-                return []
-
-            video_ids = []
-            for entry in info_dict['entries']:
-                if entry and 'id' in entry:
-                    video_ids.append(entry['id'])
+                    videos.append(Video(
+                        id=info_dict['id'],
+                        title=info_dict.get('title')
+                    ))
+            else:
+                for entry in info_dict['entries']:
+                    if entry and 'id' in entry:
+                        videos.append(Video(
+                            id=entry['id'],
+                            title=entry.get('title')
+                        ))
             
-            return video_ids
+            return Playlist(
+                url=playlist_url,
+                title=info_dict.get('title', 'Unknown Playlist'),
+                videos=videos
+            )
+
         except Exception as e:
             logger.error(f"Error extracting video IDs: {e}")
-            return []
+            return Playlist(url=playlist_url, videos=[])
 
 @retry(
     stop=stop_after_attempt(3),
@@ -48,56 +60,71 @@ def extract_video_ids(playlist_url: str) -> List[str]:
     retry=retry_if_exception_type(Exception),
     reraise=True
 )
-async def _fetch_single_transcript(video_id: str, semaphore: asyncio.Semaphore) -> Optional[Dict[str, Any]]:
+async def _fetch_single_transcript(video: Video, semaphore: asyncio.Semaphore) -> Video:
     """
     Fetches a single transcript with retries and semaphore rate limiting.
+    Updates the Video object with the transcript.
     """
     async with semaphore:
         try:
             # Offload blocking call to thread
             def fetch_sync():
                 proxies = ProxyService.get_proxies()
+                proxy_conf = None
                 if proxies:
-                    proxy_conf = GenericProxyConfig(
-                        http_url=proxies.get("http"), 
-                        https_url=proxies.get("https")
+                     proxy_conf = GenericProxyConfig(
+                        http_url=proxies.http, 
+                        https_url=proxies.https
                     )
-                else:
-                    proxy_conf = None
                 
-                return YouTubeTranscriptApi(proxy_config=proxy_conf).fetch(video_id, languages=['en'])
+                return YouTubeTranscriptApi(proxy_config=proxy_conf).fetch(video.id, languages=['en'])
 
-            transcript = await asyncio.to_thread(fetch_sync)
-            logger.info(f"Successfully fetched transcript for {video_id}")
-            return {
-                "video_id": video_id,
-                "transcript": transcript
-            }
+            raw_transcript = await asyncio.to_thread(fetch_sync)
+            
+            segments = [
+                TranscriptSegment(
+                    text=item.text,
+                    start=item.start,
+                    duration=item.duration
+                ) for item in raw_transcript
+            ]
+            
+            video.transcript = segments
+            logger.info(f"Successfully fetched transcript for {video.id}")
+            return video
+
         except (TranscriptsDisabled, NoTranscriptFound):
-            logger.warning(f"No transcript found/disabled for video {video_id}")
-            return None # Do not retry these expected errors
+            logger.warning(f"No transcript found/disabled for video {video.id}")
+            return video # Return video with empty transcript
         except Exception as e:
-            logger.warning(f"Error fetching transcript for {video_id} (retrying): {e}")
+            logger.warning(f"Error fetching transcript for {video.id} (retrying): {e}")
             raise e # Trigger retry
 
-async def fetch_transcripts(video_ids: List[str]) -> List[Dict[str, Any]]:
+async def fetch_transcripts(playlist: Playlist) -> Playlist:
     """
-    Fetches transcripts for a list of video IDs concurrently with retries.
+    Fetches transcripts for all videos in the playlist concurrently with retries.
+    Returns the updated Playlist object.
     """
-    logger.info(f"Starting concurrent transcript fetch for {len(video_ids)} videos")
+    logger.info(f"Starting concurrent transcript fetch for {len(playlist.videos)} videos")
     
     semaphore = asyncio.Semaphore(CONCURRENCY_LIMIT)
-    tasks = [_fetch_single_transcript(vid, semaphore) for vid in video_ids]
+    tasks = [_fetch_single_transcript(vid, semaphore) for vid in playlist.videos]
     
     # Run all tasks concurrently
+    # return_exceptions=True allows us to see which ones failed (and were retried until failure)
     results = await asyncio.gather(*tasks, return_exceptions=True)
     
-    valid_results = []
-    for vid, res in zip(video_ids, results):
+    updated_videos = []
+    for i, res in enumerate(results):
         if isinstance(res, Exception):
-            logger.error(f"Failed to fetch transcript for {vid} after retries: {res}")
-        elif res:
-            valid_results.append(res)
+            logger.error(f"Failed to fetch transcript for {playlist.videos[i].id} after retries: {res}")
+            # We keep the video without transcript
+            updated_videos.append(playlist.videos[i])
+        elif isinstance(res, Video):
+            updated_videos.append(res)
             
-    logger.info(f"Finished fetching transcripts. Success: {len(valid_results)}/{len(video_ids)}")
-    return valid_results
+    playlist.videos = updated_videos
+    success_count = sum(1 for v in playlist.videos if v.transcript)
+    logger.info(f"Finished fetching transcripts. Success: {success_count}/{len(playlist.videos)}")
+    
+    return playlist
