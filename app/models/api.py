@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, HttpUrl, field_validator
 
@@ -15,3 +16,12 @@ class SummaryResult(BaseModel):
     playlist_title: Optional[str]
     video_count: int
     summary_markdown: str
+
+class ConversationResponse(BaseModel):
+    id: str
+    title: Optional[str]
+    summary_snippet: Optional[str]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

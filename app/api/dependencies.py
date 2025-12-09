@@ -1,12 +1,14 @@
 from functools import lru_cache
-from fastapi import Depends
+from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.db import get_db_session
 from app.repositories.video import VideoRepository
+from app.repositories.chat import ChatRepository
 from app.services.proxy import ProxyService
 from app.services.youtube import YouTubeService
 from app.services.llm import LLMService
+from app.services.chat import ChatService
 
 @lru_cache
 def get_proxy_service() -> ProxyService:
@@ -20,6 +22,9 @@ def get_proxy_service() -> ProxyService:
 def get_video_repository(db: AsyncSession = Depends(get_db_session)) -> VideoRepository:
     return VideoRepository(db)
 
+def get_chat_repository(db: AsyncSession = Depends(get_db_session)) -> ChatRepository:
+    return ChatRepository(db)
+
 def get_youtube_service(
     proxy_service: ProxyService = Depends(get_proxy_service),
     video_repository: VideoRepository = Depends(get_video_repository)
@@ -29,3 +34,15 @@ def get_youtube_service(
 @lru_cache
 def get_llm_service() -> LLMService:
     return LLMService(api_key=settings.GEMINI_API_KEY, model_name=settings.GEMINI_MODEL_NAME)
+
+def get_chat_service(
+    youtube_service: YouTubeService = Depends(get_youtube_service),
+    llm_service: LLMService = Depends(get_llm_service),
+    chat_repository: ChatRepository = Depends(get_chat_repository)
+) -> ChatService:
+    return ChatService(youtube_service, llm_service, chat_repository)
+
+def get_user_identifier(x_user_id: str = Header(..., description="Anonymous User ID")) -> str:
+    if not x_user_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="X-User-Id header is required")
+    return x_user_id

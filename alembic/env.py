@@ -10,7 +10,7 @@ from alembic import context
 from app.core.config import settings
 from app.core.db import Base, db_url
 # Import models to ensure they are registered with Base.metadata
-from app.models.sql import VideoModel 
+from app.models.sql import VideoModel, ConversationModel
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

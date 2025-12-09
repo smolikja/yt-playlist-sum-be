@@ -19,3 +19,23 @@ class VideoModel(Base):
     transcript = Column(JSON, nullable=True)  # Stores list of transcript segments
     language = Column(String, default='en')
     created_at = Column(DateTime, default=func.now())
+
+
+class ConversationModel(Base):
+    """
+    SQLAlchemy ORM model representing a user conversation/summary session.
+
+    Attributes:
+        id (str): Unique identifier for the conversation (UUID).
+        user_id (str): Anonymous user identifier.
+        title (str): Title of the playlist or conversation.
+        summary (str): The generated summary text.
+        created_at (datetime): Timestamp of creation.
+    """
+    __tablename__ = "conversations"
+
+    id = Column(String, primary_key=True)
+    user_id = Column(String, index=True, nullable=False)
+    title = Column(String, nullable=True)
+    summary = Column(String, nullable=True)
+    created_at = Column(DateTime, default=func.now(), index=True)
