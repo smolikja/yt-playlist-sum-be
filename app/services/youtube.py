@@ -1,11 +1,9 @@
 import asyncio
 import random
-import logging
 from typing import List, Dict, Any
 from yt_dlp import YoutubeDL
 from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound
-
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 def extract_video_ids(playlist_url: str) -> List[str]:
     """
@@ -44,6 +42,7 @@ async def fetch_transcripts(video_ids: List[str]) -> List[Dict[str, Any]]:
     Fetches transcripts for a list of video IDs asynchronously (conceptually),
     but sequentially with delays to avoid IP blocking.
     """
+    logger.info(f"Starting transcript fetch for {len(video_ids)} videos")
     results = []
     
     for video_id in video_ids:
@@ -69,4 +68,5 @@ async def fetch_transcripts(video_ids: List[str]) -> List[Dict[str, Any]]:
         delay = random.uniform(0.5, 2.0)
         await asyncio.sleep(delay)
 
+    logger.info(f"Finished fetching transcripts. Success: {len(results)}/{len(video_ids)}")
     return results

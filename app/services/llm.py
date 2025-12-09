@@ -1,5 +1,6 @@
 import google.generativeai as genai
 from app.core.config import settings
+from loguru import logger
 
 # Initialize the library with the API Key
 genai.configure(api_key=settings.GEMINI_API_KEY)
@@ -24,6 +25,8 @@ async def generate_playlist_summary(context_text: str) -> str:
     prompt = f"{system_instruction}\n\n{context_text}"
 
     # Generate the content asynchronously
+    logger.info("Sending prompt to Gemini...")
     response = await model.generate_content_async(prompt)
+    logger.info("Received response from Gemini.")
     
     return response.text
