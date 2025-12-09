@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from typing import List
-from app.models import PlaylistRequest, SummaryResult, ConversationResponse
+from app.models.api import PlaylistRequest, SummaryResult, ConversationResponse, ChatRequest, ChatResponse
 from app.services.chat import ChatService
 from app.api.dependencies import get_chat_service, get_user_identifier
 from loguru import logger
@@ -43,6 +43,31 @@ async def summarize_playlist(
             detail="An error occurred while processing the playlist."
         )
 
+@router.post("/chat", response_model=ChatResponse)
+async def chat_with_playlist(
+    request: ChatRequest,
+    chat_service: ChatService = Depends(get_chat_service),
+    user_id: str = Depends(get_user_identifier)
+):
+    """
+    Sends a message to the LLM within the context of a specific conversation/playlist.
+    """
+    logger.info(f"Incoming chat message for conversation {request.conversation_id} from user {user_id}")
+    try:
+        start_time = time.perf_counter()
+        response_text = await chat_service.process_message(request.conversation_id, request.message)
+        duration = time.perf_counter() - start_time
+        logger.info(f"Chat message processed in {duration:.2f}s")
+        return ChatResponse(response=response_text)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error processing chat message: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail="An error occurred while processing the chat message."
+        )
+
 @router.get("/conversations", response_model=List[ConversationResponse])
 async def get_conversations(
     limit: int = 20,
@@ -62,6 +87,7 @@ async def get_conversations(
     Returns:
         List[ConversationResponse]: List of past conversations with snippets.
     """
+    logger.info(f"Fetching conversations for user {user_id} (limit={limit}, offset={offset})")
     conversations = await chat_service.get_history(user_id, limit, offset)
     
     # Map to response model (ConversationResponse handles formatting, but we need to create the snippet here if not in model)

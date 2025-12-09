@@ -12,10 +12,13 @@ class PlaylistRequest(BaseModel):
             raise ValueError('URL must be a valid YouTube URL')
         return v
 
-class SummaryResult(BaseModel):
+class SummaryContent(BaseModel):
     playlist_title: Optional[str]
     video_count: int
     summary_markdown: str
+
+class SummaryResult(SummaryContent):
+    conversation_id: str
 
 class ConversationResponse(BaseModel):
     id: str
@@ -25,3 +28,10 @@ class ConversationResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class ChatRequest(BaseModel):
+    conversation_id: str
+    message: str
+
+class ChatResponse(BaseModel):
+    response: str

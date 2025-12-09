@@ -1,7 +1,7 @@
-from typing import List
+from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from app.models.sql import ConversationModel
+from app.models.sql import ConversationModel, MessageModel
 
 class ChatRepository:
     """
@@ -24,6 +24,35 @@ class ChatRepository:
         await self.db.commit()
         await self.db.refresh(conversation)
         return conversation
+
+    async def get_conversation(self, conversation_id: str) -> Optional[ConversationModel]:
+        """
+        Retrieves a specific conversation by ID.
+        """
+        query = select(ConversationModel).where(ConversationModel.id == conversation_id)
+        result = await self.db.execute(query)
+        return result.scalars().first()
+
+    async def add_message(self, message: MessageModel) -> MessageModel:
+        """
+        Adds a message to a conversation.
+        """
+        self.db.add(message)
+        await self.db.commit()
+        await self.db.refresh(message)
+        return message
+
+    async def get_messages(self, conversation_id: str) -> List[MessageModel]:
+        """
+        Retrieves all messages for a conversation, ordered by creation time.
+        """
+        query = (
+            select(MessageModel)
+            .where(MessageModel.conversation_id == conversation_id)
+            .order_by(MessageModel.created_at.asc())
+        )
+        result = await self.db.execute(query)
+        return list(result.scalars().all())
 
     async def get_user_conversations(self, user_id: str, limit: int = 20, offset: int = 0) -> List[ConversationModel]:
         """
