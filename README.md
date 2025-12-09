@@ -74,7 +74,7 @@ This project uses **Alembic** for database migrations. Before running the applic
     ```bash
     uv run alembic upgrade head
     ```
-    
+
     This command will create the necessary tables (e.g., `videos`) in your configured database.
 
 ### Running the Application
