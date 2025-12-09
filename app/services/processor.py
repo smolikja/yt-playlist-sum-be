@@ -21,9 +21,9 @@ def prepare_transcript_context(transcripts_data: List[Dict[str, Any]]) -> str:
         # Concatenate text parts, ignoring 'start' and 'duration'
         # Filter out empty or None text entries just in case
         full_text = " ".join(
-            entry.get("text", "").strip() 
+            entry.text.strip() 
             for entry in raw_transcript 
-            if entry.get("text")
+            if hasattr(entry, 'text') and entry.text
         )
         
         # Clean up extra whitespace that might result from joining
