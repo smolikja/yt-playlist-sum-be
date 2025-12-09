@@ -1,5 +1,5 @@
 from typing import List, Optional
-from pydantic import BaseModel, HttpUrl, field_validator, Field, ConfigDict
+from pydantic import BaseModel, HttpUrl, Field, ConfigDict
 
 # --- Internal Parsing Models (yt-dlp) ---
 
@@ -39,24 +39,3 @@ class Playlist(BaseModel):
     url: HttpUrl
     title: Optional[str] = None
     videos: List[Video] = Field(default_factory=list)
-
-class SummaryResult(BaseModel):
-    playlist_title: Optional[str]
-    video_count: int
-    summary_markdown: str
-
-# --- API Specific Models ---
-
-class PlaylistRequest(BaseModel):
-    url: HttpUrl
-
-    @field_validator('url')
-    def validate_youtube_url(cls, v):
-        url_str = str(v)
-        if "youtube.com" not in url_str and "youtu.be" not in url_str:
-            raise ValueError('URL must be a valid YouTube URL')
-        return v
-
-class ProxyConfig(BaseModel):
-    http: Optional[str] = None
-    https: Optional[str] = None
