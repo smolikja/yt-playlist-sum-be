@@ -6,9 +6,9 @@ genai.configure(api_key=settings.GEMINI_API_KEY)
 
 async def generate_playlist_summary(context_text: str) -> str:
     """
-    Generates a summary for the provided playlist transcript context using the Gemini 1.5 Flash model.
+    Generates a summary for the provided playlist transcript context using the Gemini 2.0 Flash model.
     """
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    model = genai.GenerativeModel('gemini-2.0-flash')
 
     system_instruction = (
         "You are an expert content summarizer. You will receive transcripts from a Youtube Playlist. "
