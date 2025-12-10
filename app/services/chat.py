@@ -65,14 +65,6 @@ class ChatService:
             )
             await self.chat_repository.create_conversation(conversation)
             
-            # Save summary as first message
-            summary_msg = MessageModel(
-                conversation_id=conversation.id,
-                role=MessageRole.MODEL.value,
-                content=generated_content.summary_markdown
-            )
-            await self.chat_repository.add_message(summary_msg)
-            
             # Construct final result with the mandatory conversation_id
             final_summary_result = SummaryResult(
                 conversation_id=conversation.id,
