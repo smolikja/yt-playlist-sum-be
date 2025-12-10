@@ -146,3 +146,21 @@ class ChatService:
         Retrieves the conversation history for a user.
         """
         return await self.chat_repository.get_user_conversations(user_id, limit, offset)
+
+    async def get_conversation_detail(self, conversation_id: str, user_id: str) -> ConversationModel:
+        """
+        Retrieves full details of a conversation, including messages.
+        Enforces ownership validation.
+        """
+        conversation = await self.chat_repository.get_conversation_with_messages(conversation_id, user_id)
+        
+        if not conversation:
+            # We return 404 both if it doesn't exist OR if user_id doesn't match
+            # (since our repo query filters by both)
+            logger.warning(f"Conversation {conversation_id} not found for user {user_id}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Conversation not found"
+            )
+            
+        return conversation

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from typing import List
-from app.models.api import PlaylistRequest, SummaryResult, ConversationResponse, ChatRequest, ChatResponse
+from app.models.api import PlaylistRequest, SummaryResult, ConversationResponse, ChatRequest, ChatResponse, ConversationDetailResponse
 from app.services.chat import ChatService
 from app.api.dependencies import get_chat_service, get_user_identifier
 from loguru import logger
@@ -108,3 +108,16 @@ async def get_conversations(
         ))
         
     return response
+
+@router.get("/conversations/{conversation_id}", response_model=ConversationDetailResponse)
+async def get_conversation_detail(
+    conversation_id: str,
+    chat_service: ChatService = Depends(get_chat_service),
+    user_id: str = Depends(get_user_identifier)
+):
+    """
+    Retrieves full details of a specific conversation, including all messages.
+    Performs security check to ensure the user owns the conversation.
+    """
+    logger.info(f"Fetching conversation details {conversation_id} for user {user_id}")
+    return await chat_service.get_conversation_detail(conversation_id, user_id)

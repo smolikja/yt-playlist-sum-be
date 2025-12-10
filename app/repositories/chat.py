@@ -1,6 +1,7 @@
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from app.models.sql import ConversationModel, MessageModel
 
 class ChatRepository:
@@ -30,6 +31,21 @@ class ChatRepository:
         Retrieves a specific conversation by ID.
         """
         query = select(ConversationModel).where(ConversationModel.id == conversation_id)
+        result = await self.db.execute(query)
+        return result.scalars().first()
+
+    async def get_conversation_with_messages(self, conversation_id: str, user_id: str) -> Optional[ConversationModel]:
+        """
+        Retrieves a conversation by ID and user_id, including all messages eagerly loaded.
+        """
+        query = (
+            select(ConversationModel)
+            .where(
+                ConversationModel.id == conversation_id,
+                ConversationModel.user_id == user_id
+            )
+            .options(selectinload(ConversationModel.messages))
+        )
         result = await self.db.execute(query)
         return result.scalars().first()
 
