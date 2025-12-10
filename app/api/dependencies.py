@@ -33,7 +33,12 @@ def get_youtube_service(
 
 @lru_cache
 def get_llm_service() -> LLMService:
-    return LLMService(api_key=settings.GEMINI_API_KEY, model_name=settings.GEMINI_MODEL_NAME)
+    return LLMService(
+        gemini_api_key=settings.GEMINI_API_KEY,
+        gemini_model_name=settings.GEMINI_MODEL_NAME,
+        groq_api_key=settings.GROQ_API_KEY,
+        groq_model_name=settings.GROQ_MODEL_NAME
+    )
 
 def get_chat_service(
     youtube_service: YouTubeService = Depends(get_youtube_service),

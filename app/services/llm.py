@@ -1,14 +1,27 @@
 import google.generativeai as genai
+from groq import AsyncGroq
 from app.models import Playlist, SummaryResult, MessageRole
 from app.models.api import SummaryContent
 from loguru import logger
 
 class LLMService:
-    def __init__(self, api_key: str, model_name: str):
-        self.api_key = api_key
-        self.model_name = model_name
-        # Initialize the library with the API Key
-        genai.configure(api_key=self.api_key)
+    def __init__(
+        self,
+        gemini_api_key: str,
+        gemini_model_name: str,
+        groq_api_key: str,
+        groq_model_name: str,
+    ):
+        self.gemini_api_key = gemini_api_key
+        self.gemini_model_name = gemini_model_name
+        self.groq_api_key = groq_api_key
+        self.groq_model_name = groq_model_name
+        
+        # Initialize Gemini
+        genai.configure(api_key=self.gemini_api_key)
+        
+        # Initialize Groq
+        self.groq_client = AsyncGroq(api_key=self.groq_api_key)
 
     def prepare_context(self, playlist: Playlist) -> str:
         """
@@ -39,10 +52,8 @@ class LLMService:
 
     async def generate_summary(self, playlist: Playlist) -> SummaryContent:
         """
-        Generates a summary for the provided playlist using the Gemini 2.0 Flash model.
+        Generates a summary for the provided playlist using the Groq Llama model.
         """
-        model = genai.GenerativeModel(self.model_name)
-
         system_instruction = (
             "You are an expert content summarizer. You will receive transcripts from a Youtube Playlist. "
             "Your goal is to provide a comprehensive summary of the entire playlist, highlighting the main topics, "
@@ -53,27 +64,47 @@ class LLMService:
         context_text = self.prepare_context(playlist)
         logger.info(f"Context size: {len(context_text)} characters")
 
-        prompt = f"{system_instruction}\n\n{context_text}"
+        prompt = f"Here are the transcripts:\n\n{context_text}"
 
-        # Generate the content asynchronously
-        logger.info("Sending prompt to Gemini...")
-        response = await model.generate_content_async(prompt)
-        logger.info("Received response from Gemini.")
+        # Generate the content asynchronously using Groq
+        logger.info(f"Sending prompt to Groq (Model: {self.groq_model_name})...")
         
-        if response.usage_metadata:
-            logger.info(f"Token usage: {response.usage_metadata}")
-        
-        return SummaryContent(
-            playlist_title=playlist.title,
-            video_count=len(playlist.videos),
-            summary_markdown=response.text
-        )
+        try:
+            response = await self.groq_client.chat.completions.create(
+                messages=[
+                    {
+                        "role": "system",
+                        "content": system_instruction,
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt,
+                    }
+                ],
+                model=self.groq_model_name,
+            )
+            
+            content = response.choices[0].message.content
+            logger.info("Received response from Groq.")
+            
+            if response.usage:
+                logger.info(f"Token usage: {response.usage}")
+                
+            return SummaryContent(
+                playlist_title=playlist.title,
+                video_count=len(playlist.videos),
+                summary_markdown=content
+            )
+            
+        except Exception as e:
+            logger.error(f"Groq API call failed: {e}")
+            raise
 
     async def chat_completion(self, context_text: str, history: list, user_question: str) -> str:
         """
-        Generates a response to a user question based on the playlist context and chat history.
+        Generates a response to a user question based on the playlist context and chat history using Gemini.
         """
-        model = genai.GenerativeModel(self.model_name)
+        model = genai.GenerativeModel(self.gemini_model_name)
         
         system_instruction = (
             "You are a helpful assistant discussing a YouTube Playlist. "

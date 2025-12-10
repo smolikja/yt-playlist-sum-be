@@ -9,6 +9,7 @@ A FastAPI-based backend application designed to summarize YouTube playlists usin
 - **Dependency Management:** Uses `uv` for blazing fast package management and virtual environment handling.
 - **Database Architecture:** Uses SQLAlchemy with async support and Alembic for migrations.
 - **Efficient Caching:** Caches YouTube video transcripts to minimize external API calls.
+- **Hybrid AI Strategy:** Utilizes **Google Gemini** for interactive chat and **Groq (Llama 3)** for high-speed playlist summarization.
 - **Configuration:** Robust settings management using `pydantic-settings`.
 
 ## Tech Stack
@@ -16,7 +17,7 @@ A FastAPI-based backend application designed to summarize YouTube playlists usin
 - **Language:** Python 3.14+
 - **Framework:** FastAPI
 - **Database:** SQLAlchemy (Async), Alembic
-- **AI/LLM:** Google Gemini API
+- **AI/LLM:** Google Gemini API & Groq API
 - **Package Manager:** uv
 - **Environment Management:** python-dotenv, pydantic-settings
 
@@ -57,9 +58,13 @@ A FastAPI-based backend application designed to summarize YouTube playlists usin
     Open `.env` and configure your keys:
 
     ```env
-    # Gemini API Configuration
+    # Gemini API
     GEMINI_MODEL_NAME=gemini-2.5-flash
     GEMINI_API_KEY=your_gemini_api_key_here
+
+    # Groq API
+    GROQ_MODEL_NAME=meta-llama/llama-4-scout-17b-16e-instruct
+    GROQ_API_KEY=your_groq_api_key_here
 
     # Database Configuration
     DATABASE_URL=sqlite+aiosqlite:///./sql_app.db
