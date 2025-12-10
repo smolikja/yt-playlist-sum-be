@@ -112,7 +112,7 @@ class ChatService:
 
         # 4. Call LLM
         logger.debug(f"Calling LLM for conversation {conversation_id}")
-        response_text = await self.llm_service.chat_completion(context_text, history, user_message)
+        response_text = await self.llm_service.chat_completion(context_text, conversation.summary, history, user_message)
 
         # 5. Save messages
         user_msg = MessageModel(

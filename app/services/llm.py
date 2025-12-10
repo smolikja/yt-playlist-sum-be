@@ -100,7 +100,7 @@ class LLMService:
             logger.error(f"Groq API call failed: {e}")
             raise
 
-    async def chat_completion(self, context_text: str, history: list, user_question: str) -> str:
+    async def chat_completion(self, context_text: str, summary_text: str, history: list, user_question: str) -> str:
         """
         Generates a response to a user question based on the playlist context and chat history using Gemini.
         """
@@ -108,7 +108,7 @@ class LLMService:
         
         system_instruction = (
             "You are a helpful assistant discussing a YouTube Playlist. "
-            "Answer the user's questions based strictly on the provided transcripts. "
+            "Answer the user's questions based strictly on the provided transcripts and the playlist summary. "
             "If the answer is not in the context, say so."
         )
 
@@ -126,6 +126,7 @@ class LLMService:
 
         prompt = (
             f"{system_instruction}\n\n"
+            f"--- PLAYLIST SUMMARY ---\n{summary_text if summary_text else 'No summary available.'}\n------------------------\n\n"
             f"--- CONTEXT (TRANSCRIPTS) ---\n{context_text if context_text else 'No transcripts provided.'}\n-----------------------------\n\n"
             f"--- CHAT HISTORY ---\n{history_text}\n"
             f"User: {user_question}\n"
