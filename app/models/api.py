@@ -32,6 +32,7 @@ class ConversationResponse(BaseModel):
 class ChatRequest(BaseModel):
     conversation_id: str
     message: str
+    use_transcripts: bool = False
 
 class ChatResponse(BaseModel):
     response: str

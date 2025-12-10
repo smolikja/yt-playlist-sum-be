@@ -55,7 +55,7 @@ async def chat_with_playlist(
     logger.info(f"Incoming chat message for conversation {request.conversation_id} from user {user_id}")
     try:
         start_time = time.perf_counter()
-        response_text = await chat_service.process_message(request.conversation_id, request.message)
+        response_text = await chat_service.process_message(request.conversation_id, request.message, request.use_transcripts)
         duration = time.perf_counter() - start_time
         logger.info(f"Chat message processed in {duration:.2f}s")
         return ChatResponse(response=response_text)

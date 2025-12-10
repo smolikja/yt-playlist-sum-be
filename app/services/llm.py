@@ -81,6 +81,13 @@ class LLMService:
             "If the answer is not in the context, say so."
         )
 
+        if not context_text:
+            system_instruction = (
+                "You are a helpful assistant discussing a YouTube Playlist. "
+                "Answer based on the conversation history and the summary provided above. "
+                "Do not hallucinate details not present in the history."
+            )
+
         history_text = ""
         for msg in history:
             role_label = "User" if msg.role == MessageRole.USER else "Model"
@@ -88,7 +95,7 @@ class LLMService:
 
         prompt = (
             f"{system_instruction}\n\n"
-            f"--- CONTEXT (TRANSCRIPTS) ---\n{context_text}\n-----------------------------\n\n"
+            f"--- CONTEXT (TRANSCRIPTS) ---\n{context_text if context_text else 'No transcripts provided.'}\n-----------------------------\n\n"
             f"--- CHAT HISTORY ---\n{history_text}\n"
             f"User: {user_question}\n"
             f"Model:"

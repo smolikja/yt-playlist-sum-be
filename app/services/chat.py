@@ -93,7 +93,7 @@ class ChatService:
 
         return final_summary_result
 
-    async def process_message(self, conversation_id: str, user_message: str) -> str:
+    async def process_message(self, conversation_id: str, user_message: str, use_transcripts: bool = False) -> str:
         """
         Processes a user message in a conversation.
         """
@@ -105,12 +105,15 @@ class ChatService:
             logger.warning(f"Conversation {conversation_id} not found")
             raise HTTPException(status_code=404, detail="Conversation not found")
 
-        # 2. Fetch transcripts (using cache)
-        logger.debug(f"Fetching context for playlist {conversation.playlist_url}")
-        playlist = self.youtube_service.extract_playlist_info(conversation.playlist_url)
-        playlist = await self.youtube_service.fetch_transcripts(playlist)
-        
-        context_text = self.llm_service.prepare_context(playlist)
+        # 2. Fetch transcripts (using cache) if requested
+        context_text = ""
+        if use_transcripts:
+            logger.debug(f"Fetching context for playlist {conversation.playlist_url}")
+            playlist = self.youtube_service.extract_playlist_info(conversation.playlist_url)
+            transcripts = await self.youtube_service.fetch_transcripts(playlist)
+            context_text = self.llm_service.prepare_context(transcripts)
+        else:
+            logger.debug("Skipping transcript fetch (use_transcripts=False)")
 
         # 3. Fetch history
         history = await self.chat_repository.get_messages(conversation_id)
