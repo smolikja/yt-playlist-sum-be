@@ -1,20 +1,22 @@
 # Youtube Playlist Summarizer Backend
 
-A FastAPI-based backend application designed to summarize YouTube playlists using the Gemini API. This project serves as the server-side component for processing playlist data and generating concise summaries.
+A FastAPI-based backend application designed to summarize YouTube playlists using the Gemini API. This project serves as the server-side component for processing playlist data, caching transcripts, and generating concise, interactive summaries.
 
 ## Features
 
 - **FastAPI Framework:** High-performance, easy-to-learn, fast-to-code, ready for production.
 - **Modern Python:** Built with Python 3.14+ and type hints.
 - **Dependency Management:** Uses `uv` for blazing fast package management and virtual environment handling.
+- **Database Architecture:** Uses SQLAlchemy with async support and Alembic for migrations.
+- **Efficient Caching:** Caches YouTube video transcripts to minimize external API calls.
 - **Configuration:** Robust settings management using `pydantic-settings`.
-- **Health Check:** Standardized endpoint for service health monitoring.
 
 ## Tech Stack
 
 - **Language:** Python 3.14+
 - **Framework:** FastAPI
-- **Server:** Uvicorn
+- **Database:** SQLAlchemy (Async), Alembic
+- **AI/LLM:** Google Gemini API
 - **Package Manager:** uv
 - **Environment Management:** python-dotenv, pydantic-settings
 
@@ -23,6 +25,7 @@ A FastAPI-based backend application designed to summarize YouTube playlists usin
 ### Prerequisites
 
 - [uv](https://github.com/astral-sh/uv) installed on your machine.
+- Python 3.14+ (managed by uv).
 
 ### Installation
 
@@ -46,7 +49,7 @@ A FastAPI-based backend application designed to summarize YouTube playlists usin
     Copy the example environment file to `.env`:
 
     ```bash
-    cp .env .env.local # Or just ensure .env exists
+    cp .env.example .env
     ```
 
 2. **Update Settings:**
@@ -54,13 +57,20 @@ A FastAPI-based backend application designed to summarize YouTube playlists usin
     Open `.env` and configure your keys:
 
     ```env
-    GEMINI_API_KEY=your_actual_gemini_api_key
-    
-    # For SQLite (default, easy setup)
-    DATABASE_URL=sqlite:///./sql_app.db
-    
-    # For PostgreSQL (recommended for production)
+    # Gemini API Configuration
+    GEMINI_MODEL_NAME=gemini-2.5-flash
+    GEMINI_API_KEY=your_gemini_api_key_here
+
+    # Database Configuration
+    DATABASE_URL=sqlite+aiosqlite:///./sql_app.db
+    # Production recommended:
     # DATABASE_URL=postgresql+asyncpg://user:password@localhost/dbname
+
+    # DataImpulse Proxy
+    DATAIMPULSE_HOST=gw.dataimpulse.com
+    DATAIMPULSE_PORT=823
+    DATAIMPULSE_LOGIN=
+    DATAIMPULSE_PASSWORD=
     ```
 
 ### Database Setup
@@ -75,8 +85,6 @@ This project uses **Alembic** for database migrations. Before running the applic
     uv run alembic upgrade head
     ```
 
-    This command will create the necessary tables (e.g., `videos`) in your configured database.
-
 ### Running the Application
 
 You can start the server using `uv run` to ensure it uses the project's virtual environment.
@@ -87,15 +95,52 @@ You can start the server using `uv run` to ensure it uses the project's virtual 
 uv run uvicorn app.main:app --reload
 ```
 
-Or using the convenience script if you retained the direct execution method:
-
-```bash
-uv run app/main.py
-```
-
 The API will be available at `http://localhost:8000`.
 
-### API Documentation
+## Development Workflow & Best Practices
+
+### Database Migrations
+
+When modifying `app/models/sql.py`, always create a new migration to keep the database schema in sync.
+
+1. **Make changes** to SQLAlchemy models.
+2. **Generate a migration script:**
+
+    ```bash
+    uv run alembic revision --autogenerate -m "describe your changes"
+    ```
+
+3. **Verify the generated script** in `alembic/versions/`.
+4. **Apply the migration:**
+
+    ```bash
+    uv run alembic upgrade head
+    ```
+
+### Testing
+
+Tests are located in the `tests/` directory.
+
+```bash
+# Run all tests (assuming pytest is installed/configured)
+uv run pytest
+```
+
+### Dependency Management
+
+To add a new dependency:
+
+```bash
+uv add <package-name>
+```
+
+To update dependencies:
+
+```bash
+uv lock --upgrade
+```
+
+## API Documentation
 
 FastAPI provides automatic interactive documentation. Once the server is running, visit:
 
@@ -106,10 +151,13 @@ FastAPI provides automatic interactive documentation. Once the server is running
 
 ```text
 yt-playlist-sum-be/
+├── alembic/          # Database migration scripts
 ├── app/
 │   ├── api/          # API route endpoints
-│   ├── core/         # Core config and security
-│   ├── services/     # Business logic and external services
+│   ├── core/         # Core config, DB connection, logging
+│   ├── models/       # Pydantic and SQLAlchemy models
+│   ├── repositories/ # Data access layer
+│   ├── services/     # Business logic (LLM, YouTube, Chat)
 │   └── main.py       # Application entry point
 ├── tests/            # Test suite
 ├── .env              # Environment variables (do not commit secrets)
