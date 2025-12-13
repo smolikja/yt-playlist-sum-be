@@ -29,21 +29,27 @@ class LLMService:
         """
         formatted_parts = []
         
-        # Filter videos that have transcripts
-        valid_videos = [v for v in playlist.videos if v.transcript]
+        # Filter videos that have transcripts OR valid description fallback
+        valid_videos = [v for v in playlist.videos if v.transcript or (v.transcript_missing and v.description)]
         
         for index, video in enumerate(valid_videos, start=1):
-            # Use the helper property from the Video model
-            full_text = video.full_text
+            if video.transcript:
+                source_type = "Transcript"
+                # Use the helper property from the Video model
+                text_content = video.full_text
+            else:
+                source_type = "Description Only (Transcript Missing)"
+                text_content = video.description or ""
             
             # Clean up extra whitespace
-            full_text = " ".join(full_text.split())
+            text_content = " ".join(text_content.split())
             
             video_section = (
                 f"--- VIDEO {index} ---\n"
                 f"Video ID: {video.id}\n"
                 f"Title: {video.title or 'Unknown'}\n"
-                f"Content: {full_text}\n"
+                f"Source: {source_type}\n"
+                f"Content: {text_content}\n"
                 f"---------------------"
             )
             formatted_parts.append(video_section)
@@ -55,9 +61,10 @@ class LLMService:
         Generates a summary for the provided playlist using the Groq Llama model.
         """
         system_instruction = (
-            "You are an expert content summarizer. You will receive transcripts from a Youtube Playlist. "
-            "Your goal is to provide a comprehensive summary of the entire playlist, highlighting the main topics, "
-            "key takeaways, and the logical flow between videos. Output in Markdown."
+            "You are an expert content summarizer. The input text provided below may be in any language (English, Spanish, Czech, etc.). "
+            "Your Task: Analyze the content in its original language. "
+            "OUTPUT RULE: You must write the final summary and all responses strictly in ENGLISH, regardless of the input language. "
+            "If a video has no transcript (only description provided), note this limitation in the summary."
         )
         
         logger.info("Processing transcript context...")
@@ -108,7 +115,8 @@ class LLMService:
         
         system_instruction = (
             "You are a helpful assistant discussing a YouTube Playlist. "
-            "Answer the user's questions based strictly on the provided transcripts and the playlist summary. "
+            "The content provided may be in various languages, but you must ALWAYS reply in ENGLISH. "
+            "Answer the user's questions based strictly on the provided transcripts/descriptions and the playlist summary. "
             "If the answer is not in the context, say so."
         )
 
@@ -116,7 +124,8 @@ class LLMService:
             system_instruction = (
                 "You are a helpful assistant discussing a YouTube Playlist. "
                 "Answer based on the conversation history and the summary provided above. "
-                "Do not hallucinate details not present in the history."
+                "Do not hallucinate details not present in the history. "
+                "Always reply in ENGLISH."
             )
 
         history_text = ""
