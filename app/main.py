@@ -11,6 +11,7 @@ from loguru import logger
 import uuid
 from app.core.config import settings
 from app.api.endpoints import router as api_router
+from app.api.auth import router as auth_router
 from app.core.logging import setup_logging
 
 @asynccontextmanager
@@ -39,6 +40,7 @@ async def request_context_middleware(request: Request, call_next):
         response.headers["X-Request-ID"] = request_id
         return response
 
+app.include_router(auth_router)
 app.include_router(api_router, prefix="/api/v1")
 
 @app.get("/health")

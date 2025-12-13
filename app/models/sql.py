@@ -1,6 +1,15 @@
 from sqlalchemy import Column, String, DateTime, func, JSON, Integer, ForeignKey, Text
 from sqlalchemy.orm import relationship
+from sqlalchemy.dialects.postgresql import UUID
+from fastapi_users.db import SQLAlchemyBaseUserTableUUID
 from app.core.db import Base
+import uuid
+
+class User(SQLAlchemyBaseUserTableUUID, Base):
+    """
+    SQLAlchemy ORM model representing an authenticated user.
+    """
+    __tablename__ = "users"
 
 class VideoModel(Base):
     """
@@ -28,7 +37,7 @@ class ConversationModel(Base):
 
     Attributes:
         id (str): Unique identifier for the conversation (UUID).
-        user_id (str): Anonymous user identifier.
+        user_id (UUID): Foreign key to the user.
         playlist_url (str): The URL of the playlist.
         title (str): Title of the playlist or conversation.
         summary (str): The generated summary text.
@@ -37,13 +46,15 @@ class ConversationModel(Base):
     __tablename__ = "conversations"
 
     id = Column(String, primary_key=True)
-    user_id = Column(String, index=True, nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), index=True, nullable=True)
     playlist_url = Column(String, nullable=True)
     title = Column(String, nullable=True)
     summary = Column(String, nullable=True)
     created_at = Column(DateTime, default=func.now(), index=True)
+    updated_at = Column(DateTime, default=func.now(), server_default=func.now(), nullable=False)
 
     messages = relationship("MessageModel", back_populates="conversation", cascade="all, delete-orphan")
+    user = relationship("User", backref="conversations")
 
 
 class MessageModel(Base):

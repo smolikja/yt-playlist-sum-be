@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     DATAIMPULSE_LOGIN: str
     DATAIMPULSE_PASSWORD: str
 
+    # Auth
+    SECRET_KEY: str
+
     model_config = SettingsConfigDict(env_file=".env")
 
 settings = Settings()

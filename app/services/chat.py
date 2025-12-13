@@ -1,5 +1,5 @@
 import uuid
-from typing import List
+from typing import List, Optional
 from loguru import logger
 from fastapi import HTTPException, status
 from app.models import PlaylistRequest, SummaryResult, MessageRole
@@ -19,7 +19,7 @@ class ChatService:
         self.llm_service = llm_service
         self.chat_repository = chat_repository
 
-    async def create_session(self, user_id: str, request: PlaylistRequest) -> SummaryResult:
+    async def create_session(self, user_id: Optional[uuid.UUID], request: PlaylistRequest) -> SummaryResult:
         """
         Orchestrates the process of:
         1. Extracting playlist info.
@@ -85,7 +85,7 @@ class ChatService:
 
         return final_summary_result
 
-    async def process_message(self, conversation_id: str, user_message: str, use_transcripts: bool = False) -> str:
+    async def process_message(self, conversation_id: str, user_message: str, user_id: uuid.UUID, use_transcripts: bool = False) -> str:
         """
         Processes a user message in a conversation.
         """
@@ -96,6 +96,11 @@ class ChatService:
         if not conversation:
             logger.warning(f"Conversation {conversation_id} not found")
             raise HTTPException(status_code=404, detail="Conversation not found")
+            
+        # Security check: Ensure user owns this conversation
+        if conversation.user_id != user_id:
+            logger.warning(f"User {user_id} attempted to access conversation {conversation_id} owned by {conversation.user_id}")
+            raise HTTPException(status_code=403, detail="You do not have permission to access this conversation")
 
         # 2. Fetch transcripts (using cache) if requested
         context_text = ""
@@ -129,17 +134,52 @@ class ChatService:
         )
         await self.chat_repository.add_message(model_msg)
         
+        # Update conversation timestamp
+        conversation.updated_at = datetime.utcnow()
+        await self.chat_repository.update_conversation(conversation)
+
         logger.debug(f"Message processed and saved for conversation {conversation_id}")
 
         return response_text
 
-    async def get_history(self, user_id: str, limit: int = 20, offset: int = 0) -> List[ConversationModel]:
+    async def delete_conversation(self, conversation_id: str, user_id: uuid.UUID) -> None:
+        """
+        Deletes a conversation if it exists and belongs to the user.
+        """
+        conversation = await self.chat_repository.get_conversation(conversation_id)
+        if not conversation:
+            logger.warning(f"Conversation {conversation_id} not found for deletion")
+            raise HTTPException(status_code=404, detail="Conversation not found")
+
+        if conversation.user_id != user_id:
+            logger.warning(f"User {user_id} attempted to delete conversation {conversation_id} owned by {conversation.user_id}")
+            raise HTTPException(status_code=403, detail="You do not have permission to delete this conversation")
+
+        await self.chat_repository.delete_conversation(conversation)
+        logger.info(f"Conversation {conversation_id} deleted by user {user_id}")
+
+    async def claim_conversation(self, conversation_id: str, user_id: uuid.UUID) -> None:
+        """
+        Claims an anonymous conversation for a user.
+        """
+        conversation = await self.chat_repository.get_conversation(conversation_id)
+        if not conversation:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        
+        if conversation.user_id is not None:
+            raise HTTPException(status_code=403, detail="Conversation is already claimed or owned by another user.")
+            
+        conversation.user_id = user_id
+        await self.chat_repository.update_conversation(conversation)
+        logger.info(f"Conversation {conversation_id} claimed by user {user_id}")
+
+    async def get_history(self, user_id: uuid.UUID, limit: int = 20, offset: int = 0) -> List[ConversationModel]:
         """
         Retrieves the conversation history for a user.
         """
         return await self.chat_repository.get_user_conversations(user_id, limit, offset)
 
-    async def get_conversation_detail(self, conversation_id: str, user_id: str) -> ConversationModel:
+    async def get_conversation_detail(self, conversation_id: str, user_id: uuid.UUID) -> ConversationModel:
         """
         Retrieves full details of a conversation, including messages.
         Enforces ownership validation.

@@ -25,6 +25,7 @@ class ConversationResponse(BaseModel):
     title: Optional[str]
     summary_snippet: Optional[str]
     created_at: datetime
+    updated_at: datetime
 
     class Config:
         from_attributes = True
@@ -51,7 +52,20 @@ class ConversationDetailResponse(BaseModel):
     title: Optional[str]
     summary: str
     created_at: datetime
+    updated_at: datetime
     messages: list[MessageResponse]
 
     class Config:
         from_attributes = True
+
+from fastapi_users import schemas
+import uuid
+
+class UserRead(schemas.BaseUser[uuid.UUID]):
+    pass
+
+class UserCreate(schemas.BaseUserCreate):
+    pass
+
+class UserUpdate(schemas.BaseUserUpdate):
+    pass

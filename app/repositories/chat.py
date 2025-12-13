@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from app.models.sql import ConversationModel, MessageModel
+import uuid
 
 class ChatRepository:
     """
@@ -26,6 +27,15 @@ class ChatRepository:
         await self.db.refresh(conversation)
         return conversation
 
+    async def update_conversation(self, conversation: ConversationModel) -> ConversationModel:
+        """
+        Updates an existing conversation in the database.
+        """
+        self.db.add(conversation)
+        await self.db.commit()
+        await self.db.refresh(conversation)
+        return conversation
+
     async def get_conversation(self, conversation_id: str) -> Optional[ConversationModel]:
         """
         Retrieves a specific conversation by ID.
@@ -34,7 +44,7 @@ class ChatRepository:
         result = await self.db.execute(query)
         return result.scalars().first()
 
-    async def get_conversation_with_messages(self, conversation_id: str, user_id: str) -> Optional[ConversationModel]:
+    async def get_conversation_with_messages(self, conversation_id: str, user_id: uuid.UUID) -> Optional[ConversationModel]:
         """
         Retrieves a conversation by ID and user_id, including all messages eagerly loaded.
         """
@@ -70,12 +80,12 @@ class ChatRepository:
         result = await self.db.execute(query)
         return list(result.scalars().all())
 
-    async def get_user_conversations(self, user_id: str, limit: int = 20, offset: int = 0) -> List[ConversationModel]:
+    async def get_user_conversations(self, user_id: uuid.UUID, limit: int = 20, offset: int = 0) -> List[ConversationModel]:
         """
-        Retrieves a list of conversations for a specific user, ordered by creation date.
+        Retrieves a list of conversations for a specific user, ordered by last update.
 
         Args:
-            user_id (str): The user ID to filter by.
+            user_id (uuid.UUID): The user ID to filter by.
             limit (int): Maximum number of records to return.
             offset (int): Number of records to skip.
 
@@ -85,9 +95,16 @@ class ChatRepository:
         query = (
             select(ConversationModel)
             .where(ConversationModel.user_id == user_id)
-            .order_by(ConversationModel.created_at.desc())
+            .order_by(ConversationModel.updated_at.desc())
             .limit(limit)
             .offset(offset)
         )
         result = await self.db.execute(query)
         return list(result.scalars().all())
+
+    async def delete_conversation(self, conversation: ConversationModel) -> None:
+        """
+        Deletes a conversation from the database.
+        """
+        await self.db.delete(conversation)
+        await self.db.commit()

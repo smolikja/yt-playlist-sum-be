@@ -1,4 +1,9 @@
 import asyncio
+import uuid
+import sys
+import os
+sys.path.insert(0, os.getcwd())
+
 from unittest.mock import AsyncMock, MagicMock
 from app.services.chat import ChatService
 from app.models.sql import ConversationModel
@@ -13,9 +18,11 @@ async def test_chat_logic():
     mock_llm_service.prepare_context = MagicMock(return_value="Context")
     mock_llm_service.chat_completion = AsyncMock(return_value="Response")
     
+    dummy_user_id = uuid.uuid4()
+    
     mock_chat_repository = MagicMock()
     mock_chat_repository.get_conversation = AsyncMock(return_value=ConversationModel(
-        id="123", playlist_url="http://url", user_id="user", title="Title", summary="Summary"
+        id="123", playlist_url="http://url", user_id=dummy_user_id, title="Title", summary="Summary"
     ))
     mock_chat_repository.get_messages = AsyncMock(return_value=[])
     mock_chat_repository.add_message = AsyncMock()
@@ -25,7 +32,7 @@ async def test_chat_logic():
 
     # Test Case 1: use_transcripts = True
     print("Testing use_transcripts=True...")
-    await service.process_message("123", "Hello", use_transcripts=True)
+    await service.process_message("123", "Hello", dummy_user_id, use_transcripts=True)
     
     # Verify fetch_transcripts was called
     if mock_youtube_service.fetch_transcripts.called:
@@ -38,7 +45,7 @@ async def test_chat_logic():
 
     # Test Case 2: use_transcripts = False
     print("\nTesting use_transcripts=False...")
-    await service.process_message("123", "Hello", use_transcripts=False)
+    await service.process_message("123", "Hello", dummy_user_id, use_transcripts=False)
     
     # Verify fetch_transcripts was NOT called
     if not mock_youtube_service.fetch_transcripts.called:
