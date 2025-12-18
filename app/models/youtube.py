@@ -1,46 +1,69 @@
+"""
+Pydantic models for YouTube data structures.
+"""
 from typing import List, Optional
-from pydantic import BaseModel, HttpUrl, Field, ConfigDict
+
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl
+
 
 # --- Internal Parsing Models (yt-dlp) ---
 
+
 class YtDlpEntry(BaseModel):
+    """Model for individual video entries from yt-dlp response."""
+
     id: Optional[str] = None
     title: Optional[str] = None
     url: Optional[str] = None
     description: Optional[str] = None
-    
-    model_config = ConfigDict(extra='ignore')
+
+    model_config = ConfigDict(extra="ignore")
+
 
 class YtDlpResponse(BaseModel):
+    """Model for yt-dlp playlist/video response."""
+
     id: Optional[str] = None
     title: Optional[str] = None
     entries: Optional[List[YtDlpEntry]] = None
-    
-    model_config = ConfigDict(extra='ignore')
+
+    model_config = ConfigDict(extra="ignore")
+
 
 # --- Core Data Models ---
 
+
 class TranscriptSegment(BaseModel):
+    """Model for a single transcript segment."""
+
     text: str
     start: float
     duration: float
 
+    model_config = ConfigDict(frozen=True)
+
+
 class Video(BaseModel):
+    """Model for a YouTube video with optional transcript."""
+
     id: str
     title: Optional[str] = None
     description: Optional[str] = None
     transcript: List[TranscriptSegment] = Field(default_factory=list)
     transcript_missing: bool = False
     language: Optional[str] = None
-    
+
     @property
     def full_text(self) -> str:
-        """Concatenates all transcript segments into a single string."""
+        """Concatenate all transcript segments into a single string."""
         if self.transcript:
             return " ".join(seg.text.strip() for seg in self.transcript if seg.text)
         return self.description or ""
 
+
 class Playlist(BaseModel):
+    """Model for a YouTube playlist with videos."""
+
     id: Optional[str] = None
     url: HttpUrl
     title: Optional[str] = None

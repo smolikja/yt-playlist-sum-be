@@ -1,27 +1,70 @@
-import sys
-import os
-
-# Add the project root directory to sys.path to resolve 'app' imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from fastapi import FastAPI, Request
+"""
+FastAPI application entry point.
+"""
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from loguru import logger
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 import uuid
+
 from app.core.config import settings
+from app.core.logging import setup_logging
+from app.core.limiter import limiter
+from app.core.exceptions import (
+    AppException,
+    app_exception_handler,
+    create_error_response,
+)
 from app.api.endpoints import router as api_router
 from app.api.auth import router as auth_router
-from app.core.logging import setup_logging
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Application lifespan context manager."""
     setup_logging()
     logger.info("🚀 Application startup")
     yield
     logger.info("🛑 Application shutdown")
 
+
 app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
+
+# Add rate limiter state to app
+app.state.limiter = limiter
+
+# Register exception handlers
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(AppException, app_exception_handler)
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+    """Convert HTTPException to RFC 7807 format."""
+    return create_error_response(
+        request=request,
+        status_code=exc.status_code,
+        error_type=f"https://problems.example.com/http-{exc.status_code}",
+        title=exc.detail if isinstance(exc.detail, str) else "HTTP Error",
+        detail=exc.detail if isinstance(exc.detail, str) else str(exc.detail),
+    )
+
+
+@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Handle unexpected exceptions with RFC 7807 format."""
+    logger.exception(f"Unhandled exception: {exc}")
+    return create_error_response(
+        request=request,
+        status_code=500,
+        error_type="https://problems.example.com/internal-error",
+        title="Internal Server Error",
+        detail="An unexpected error occurred. Please try again later.",
+    )
+
 
 # Configure CORS
 app.add_middleware(
@@ -32,20 +75,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.middleware("http")
 async def request_context_middleware(request: Request, call_next):
+    """Add request ID to logging context and response headers."""
     request_id = str(uuid.uuid4())
     with logger.contextualize(request_id=request_id):
         response = await call_next(request)
         response.headers["X-Request-ID"] = request_id
         return response
 
+
+# Include routers
 app.include_router(auth_router)
 app.include_router(api_router, prefix="/api/v1")
 
+
 @app.get("/health")
 async def health_check():
+    """Health check endpoint."""
     return {"status": "ok", "project": settings.PROJECT_NAME}
+
 
 if __name__ == "__main__":
     import uvicorn
