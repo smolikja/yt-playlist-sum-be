@@ -12,7 +12,7 @@ from app.services.youtube import YouTubeService
 from app.services.llm import LLMService
 from app.repositories.chat import ChatRepository
 from app.core.exceptions import NotFoundError, ForbiddenError, BadRequestError, InternalServerError
-from app.core.cache import get_cached_summary, set_cached_summary
+from app.core.cache import get_cached_summary, set_cached_summary, CachedSummary
 
 
 class ChatService:
@@ -72,16 +72,16 @@ class ChatService:
             conversation = ConversationModel(
                 id=str(uuid.uuid4()),
                 user_id=user_id,
-                title=cached.get("playlist_title"),
+                title=cached["playlist_title"],
                 playlist_url=url_str,
-                summary=cached.get("summary_markdown"),
+                summary=cached["summary_markdown"],
             )
             await self.chat_repository.create_conversation(conversation)
             return SummaryResult(
                 conversation_id=conversation.id,
-                playlist_title=cached.get("playlist_title"),
-                video_count=cached.get("video_count", 0),
-                summary_markdown=cached.get("summary_markdown", ""),
+                playlist_title=cached["playlist_title"],
+                video_count=cached["video_count"],
+                summary_markdown=cached["summary_markdown"],
             )
 
         # 1. Extract Playlist Info (now async)
