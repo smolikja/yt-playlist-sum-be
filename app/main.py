@@ -33,11 +33,37 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
 
-# Add rate limiter state to app
-app.state.limiter = limiter
 
-# Register exception handlers
+# MARK: - CORS MIDDLEWARE
+# Note: Middleware executes in reverse order of addition.
+# CORS must be the outermost layer to handle preflight OPTIONS requests
+# before any exception handlers or other middleware interfere.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.BACKEND_CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# MARK: - REQUEST CONTEXT MIDDLEWARE
+@app.middleware("http")
+async def request_context_middleware(request: Request, call_next):
+    """Add request ID to logging context and response headers."""
+    request_id = str(uuid.uuid4())
+    with logger.contextualize(request_id=request_id):
+        response = await call_next(request)
+        response.headers["X-Request-ID"] = request_id
+        return response
+
+
+# MARK: - RATE LIMITER
+app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+# MARK: - EXCEPTION HANDLERS
 app.add_exception_handler(AppException, app_exception_handler)
 
 
@@ -66,27 +92,7 @@ async def generic_exception_handler(request: Request, exc: Exception) -> JSONRes
     )
 
 
-# Configure CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.BACKEND_CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-@app.middleware("http")
-async def request_context_middleware(request: Request, call_next):
-    """Add request ID to logging context and response headers."""
-    request_id = str(uuid.uuid4())
-    with logger.contextualize(request_id=request_id):
-        response = await call_next(request)
-        response.headers["X-Request-ID"] = request_id
-        return response
-
-
-# Include routers
+# MARK: - ROUTERS
 app.include_router(auth_router)
 app.include_router(api_router, prefix="/api/v1")
 
