@@ -90,6 +90,7 @@ class ConversationDetailResponse(BaseModel):
 
     id: str
     title: Optional[str] = None
+    playlist_url: Optional[str] = None
     summary: str
     created_at: datetime
     updated_at: datetime

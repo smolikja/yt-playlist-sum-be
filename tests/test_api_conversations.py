@@ -68,3 +68,35 @@ def test_health_check():
     data = response.json()
     assert data["status"] == "ok"
     assert "project" in data
+
+
+def test_get_conversation_detail(override_dependencies, mock_chat_service, mock_user_id):
+    """Test GET /api/v1/conversations/{id} endpoint returns playlist_url."""
+    conversation_id = str(uuid.uuid4())
+    playlist_url = "https://www.youtube.com/playlist?list=PLtest123"
+    
+    # Create mock conversation with messages
+    mock_conversation = ConversationModel(
+        id=conversation_id,
+        title="Test Playlist",
+        playlist_url=playlist_url,
+        summary="Test summary",
+        created_at=datetime.now(),
+        updated_at=datetime.now(),
+    )
+    mock_conversation.messages = []
+    mock_chat_service.get_conversation_detail.return_value = mock_conversation
+
+    response = client.get(f"/api/v1/conversations/{conversation_id}")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == conversation_id
+    assert data["playlist_url"] == playlist_url
+    assert data["title"] == "Test Playlist"
+    assert data["summary"] == "Test summary"
+    assert "messages" in data
+    
+    mock_chat_service.get_conversation_detail.assert_called_with(
+        conversation_id, mock_user_id
+    )
