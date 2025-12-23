@@ -14,11 +14,24 @@ See [Authentication](./authentication.md) for details on obtaining tokens.
 
 ---
 
+## API Limits
+
+| Limit | Value | Description |
+|-------|-------|-------------|
+| `CONVERSATIONS_MAX_LIMIT` | 100 | Max conversations per request |
+| `MAX_MESSAGE_LENGTH` | 10,000 | Max characters per message |
+| Summarize rate | 10/minute | Rate limit for `/summarize` |
+| Chat rate | 30/minute | Rate limit for `/chat` |
+
+Constants are defined in `app/core/constants.py`.
+
+---
+
 ## Endpoints
 
 ### POST /summarize
 
-Summarize a YouTube playlist and create a conversation.
+Summarize a YouTube playlist or single video and create a conversation.
 
 **Rate Limit:** 10 requests/minute
 
@@ -41,6 +54,7 @@ Summarize a YouTube playlist and create a conversation.
 
 **Notes:**
 - Anonymous users can summarize but cannot access conversation history
+- Accepts both playlist URLs and single video URLs
 - Transcripts are cached for future requests
 - RAG indexing happens automatically
 
@@ -63,11 +77,11 @@ Send a message within a conversation context.
 }
 ```
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
+| Parameter | Type | Constraints | Description |
+|-----------|------|-------------|-------------|
 | `conversation_id` | string | required | Conversation UUID |
-| `message` | string | required | User message |
-| `use_rag` | boolean | `true` | Enable RAG context retrieval |
+| `message` | string | 1-10,000 chars | User message |
+| `use_rag` | boolean | default: `true` | Enable RAG context retrieval |
 
 **Response:**
 ```json
@@ -85,10 +99,10 @@ List user's conversations.
 **Authentication:** Required
 
 **Query Parameters:**
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `limit` | int | 20 | Max results |
-| `offset` | int | 0 | Pagination offset |
+| Parameter | Type | Constraints | Default | Description |
+|-----------|------|-------------|---------|-------------|
+| `limit` | int | 1-100 | 20 | Max results |
+| `offset` | int | >= 0 | 0 | Pagination offset |
 
 **Response:**
 ```json
@@ -167,11 +181,14 @@ Delete a conversation and all its messages.
 
 ## Error Responses
 
-All errors follow this format:
+All errors follow RFC 7807 format:
 
 ```json
 {
-  "detail": "Error message"
+  "type": "https://problems.example.com/not-found",
+  "title": "Resource not found",
+  "status": 404,
+  "detail": "Conversation xyz not found"
 }
 ```
 

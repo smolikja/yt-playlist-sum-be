@@ -13,9 +13,7 @@ from app.services.proxy import ProxyService
 from app.models import Playlist, Video, TranscriptSegment, YtDlpResponse
 from app.models.sql import VideoModel
 from app.repositories.video import VideoRepository
-
-# Limit concurrent requests to avoid overwhelming proxies or YouTube
-CONCURRENCY_LIMIT = 5
+from app.core.constants import YOUTUBE_CONCURRENCY_LIMIT
 
 
 class YouTubeService:
@@ -262,7 +260,7 @@ class YouTubeService:
             logger.info(
                 f"Fetching {len(missing_videos)} missing transcripts from YouTube"
             )
-            semaphore = asyncio.Semaphore(CONCURRENCY_LIMIT)
+            semaphore = asyncio.Semaphore(YOUTUBE_CONCURRENCY_LIMIT)
             tasks = [
                 self._fetch_single_transcript(vid, semaphore) for vid in missing_videos
             ]

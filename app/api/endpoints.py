@@ -1,7 +1,7 @@
 """
 API endpoints for playlist summarization, chat, and conversation management.
 """
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Request, Depends, Query
 from typing import List, Optional
 from loguru import logger
 import time
@@ -20,13 +20,19 @@ from app.api.auth import current_active_user, current_optional_user
 from app.models.sql import User
 from app.core.limiter import limiter
 from app.core.exceptions import InternalServerError, AppException
+from app.core.constants import (
+    CONVERSATIONS_DEFAULT_LIMIT,
+    CONVERSATIONS_MAX_LIMIT,
+    RATE_LIMIT_SUMMARIZE,
+    RATE_LIMIT_CHAT,
+)
 
 
 router = APIRouter()
 
 
 @router.post("/summarize", response_model=SummaryResult)
-@limiter.limit("10/minute")
+@limiter.limit(RATE_LIMIT_SUMMARIZE)
 async def summarize_playlist(
     request: Request,
     payload: PlaylistRequest,
@@ -59,7 +65,7 @@ async def summarize_playlist(
 
 
 @router.post("/chat", response_model=ChatResponse)
-@limiter.limit("30/minute")
+@limiter.limit(RATE_LIMIT_CHAT)
 async def chat_with_playlist(
     request: Request,
     payload: ChatRequest,
@@ -137,8 +143,13 @@ async def delete_conversation(
 
 @router.get("/conversations", response_model=List[ConversationResponse])
 async def get_conversations(
-    limit: int = 20,
-    offset: int = 0,
+    limit: int = Query(
+        default=CONVERSATIONS_DEFAULT_LIMIT,
+        ge=1,
+        le=CONVERSATIONS_MAX_LIMIT,
+        description=f"Max results (1-{CONVERSATIONS_MAX_LIMIT})",
+    ),
+    offset: int = Query(default=0, ge=0, description="Pagination offset"),
     chat_service: ChatService = Depends(get_chat_service),
     user: User = Depends(current_active_user),
 ):

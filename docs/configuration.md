@@ -33,7 +33,7 @@ cp .env.example .env
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `EMBEDDING_PROVIDER` | `sentence_transformers` | Embedding backend |
+| `EMBEDDING_PROVIDER` | `sentence_transformer` | Embedding backend |
 | `EMBEDDING_MODEL` | `all-MiniLM-L6-v2` | Model for embeddings |
 | `VECTOR_STORE` | `pgvector` | Vector database backend |
 
@@ -52,32 +52,46 @@ cp .env.example .env
 |----------|---------|-------------|
 | `BACKEND_CORS_ORIGINS` | `http://localhost:3000,http://localhost:8000` | Allowed origins |
 
-## Example .env
+---
 
-```env
-# Gemini API
-GEMINI_MODEL_NAME=gemini-2.5-flash
-GEMINI_API_KEY=your_gemini_api_key_here
+## Application Constants
 
-# Groq API
-GROQ_MODEL_NAME=meta-llama/llama-4-scout-17b-16e-instruct
-GROQ_API_KEY=your_groq_api_key_here
+Defined in `app/core/constants.py`:
 
-# Database (PostgreSQL with pgvector - use docker-compose.yml)
-DATABASE_URL=postgresql+asyncpg://dev:dev@localhost:5432/ytsum_dev
+### Pagination
+| Constant | Value | Description |
+|----------|-------|-------------|
+| `CONVERSATIONS_DEFAULT_LIMIT` | 20 | Default conversations per page |
+| `CONVERSATIONS_MAX_LIMIT` | 100 | Max conversations per page |
 
-# DataImpulse Proxy
-DATAIMPULSE_HOST=gw.dataimpulse.com
-DATAIMPULSE_PORT=823
-DATAIMPULSE_LOGIN=
-DATAIMPULSE_PASSWORD=
+### Messages
+| Constant | Value | Description |
+|----------|-------|-------------|
+| `MAX_MESSAGE_LENGTH` | 10,000 | Max chars per chat message |
+| `MAX_MESSAGES_PER_CONVERSATION` | 1,000 | Max messages in conversation |
+| `CHAT_HISTORY_CONTEXT_SIZE` | 5 | Messages sent to LLM |
 
-# CORS
-BACKEND_CORS_ORIGINS=http://localhost:3000,http://localhost:8000
+### Rate Limits
+| Constant | Value | Description |
+|----------|-------|-------------|
+| `RATE_LIMIT_SUMMARIZE` | 10/minute | Summarize endpoint |
+| `RATE_LIMIT_CHAT` | 30/minute | Chat endpoint |
 
-# JWT Secret
-SECRET_KEY=supersecretkey123
-```
+### RAG
+| Constant | Value | Description |
+|----------|-------|-------------|
+| `CHUNK_SIZE` | 1,000 | Chars per chunk |
+| `CHUNK_OVERLAP` | 200 | Overlap between chunks |
+| `RAG_TOP_K` | 5 | Chunks retrieved |
+| `EMBEDDING_BATCH_SIZE` | 32 | Batch size for embeddings |
+
+### YouTube
+| Constant | Value | Description |
+|----------|-------|-------------|
+| `YOUTUBE_CONCURRENCY_LIMIT` | 5 | Parallel transcript fetches |
+| `MAX_TRANSCRIPT_CHARS` | 16,000 | Max chars per video |
+
+---
 
 ## Settings Class
 
@@ -85,27 +99,27 @@ Located in `app/core/config.py`:
 
 ```python
 from pydantic_settings import BaseSettings
+from app.models.enums import LLMProviderType
 
 class Settings(BaseSettings):
     DATABASE_URL: str
     SECRET_KEY: str
-    GEMINI_API_KEY: str
-    GROQ_API_KEY: str
-    # ... more fields
     
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        extra="ignore",
-    )
+    # Type-safe provider selection
+    CHAT_LLM_PROVIDER: LLMProviderType = LLMProviderType.GEMINI
+    SUMMARY_LLM_PROVIDER: LLMProviderType = LLMProviderType.GROQ
+    
+    model_config = SettingsConfigDict(env_file=".env")
 
 settings = Settings()
 ```
 
-## Accessing Settings
+## Accessing Configuration
 
 ```python
 from app.core.config import settings
+from app.core.constants import MAX_MESSAGE_LENGTH
 
-print(settings.DATABASE_URL)
-print(settings.GEMINI_API_KEY)
+print(settings.CHAT_LLM_PROVIDER)  # LLMProviderType.GEMINI
+print(MAX_MESSAGE_LENGTH)          # 10000
 ```
