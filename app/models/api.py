@@ -61,8 +61,7 @@ class ChatRequest(BaseModel):
 
     conversation_id: str
     message: str = Field(..., min_length=1, max_length=10_000)
-    # Accept both 'use_rag' and 'use_transcripts' for backward compatibility
-    use_rag: bool = Field(default=True, alias="use_transcripts")
+    use_rag: bool = True
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
