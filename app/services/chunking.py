@@ -8,6 +8,7 @@ from typing import Generator
 
 from app.models import TranscriptSegment
 from app.core.providers.vector_store import DocumentChunk
+from app.core.constants import RAGConfig
 
 
 class TranscriptChunker:
@@ -31,9 +32,9 @@ class TranscriptChunker:
     
     def __init__(
         self,
-        chunk_size: int = 1000,      # ~250 tokens
-        chunk_overlap: int = 200,    # ~50 tokens overlap
-        min_chunk_size: int = 100,
+        chunk_size: int = RAGConfig.CHUNK_SIZE,      # ~250 tokens
+        chunk_overlap: int = RAGConfig.CHUNK_OVERLAP,    # ~50 tokens overlap
+        min_chunk_size: int = RAGConfig.MIN_CHUNK_SIZE,
     ):
         """
         Initialize the chunker with size parameters.

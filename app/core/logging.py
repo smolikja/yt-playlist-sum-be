@@ -1,5 +1,7 @@
 """
 Logging configuration using Loguru.
+
+Encapsulated in a configurator class for better extensibility and testing.
 """
 import logging
 import sys
@@ -36,59 +38,63 @@ class InterceptHandler(logging.Handler):
         )
 
 
-def setup_logging() -> None:
-    """
-    Configure logging with Loguru.
+class LoggerConfigurator:
+    """Configurator for application-wide logging."""
 
-    This function:
-    1. Removes existing handlers
-    2. Intercepts standard library logging
-    3. Configures Loguru with console and file sinks
-    """
-    # Remove all existing handlers
-    logging.root.handlers = []
+    @staticmethod
+    def setup() -> None:
+        """
+        Configure logging with Loguru.
 
-    # Intercept everything that goes to standard logging
-    logging.basicConfig(handlers=[InterceptHandler()], level=0)
+        This function:
+        1. Removes existing handlers
+        2. Intercepts standard library logging
+        3. Configures Loguru with console and file sinks
+        """
+        # Remove all existing handlers
+        logging.root.handlers = []
 
-    # Specific interception for Uvicorn
-    for logger_name in ("uvicorn", "uvicorn.access", "uvicorn.error"):
-        logging_logger = logging.getLogger(logger_name)
-        logging_logger.handlers = [InterceptHandler()]
-        logging_logger.propagate = False
+        # Intercept everything that goes to standard logging
+        logging.basicConfig(handlers=[InterceptHandler()], level=0)
 
-    # Configure Loguru
-    logger.remove()  # Remove default handler
+        # Specific interception for Uvicorn
+        for logger_name in ("uvicorn", "uvicorn.access", "uvicorn.error"):
+            logging_logger = logging.getLogger(logger_name)
+            logging_logger.handlers = [InterceptHandler()]
+            logging_logger.propagate = False
 
-    # Patcher to ensure request_id exists in extra context
-    def add_request_id(record: dict[str, Any]) -> None:
-        record["extra"].setdefault("request_id", "N/A")
+        # Configure Loguru
+        logger.remove()  # Remove default handler
 
-    logger.configure(patcher=add_request_id)
+        # Patcher to ensure request_id exists in extra context
+        def add_request_id(record: dict[str, Any]) -> None:
+            record["extra"].setdefault("request_id", "N/A")
 
-    # Console Sink
-    logger.add(
-        sys.stderr,
-        format=(
-            "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
-            "<level>{level: <8}</level> | "
-            "<magenta>{extra[request_id]}</magenta> | "
-            "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
-            "<level>{message}</level>"
-        ),
-        level="INFO",
-    )
+        logger.configure(patcher=add_request_id)
 
-    # File Sink
-    logger.add(
-        "logs/app.log",
-        rotation="10 MB",
-        retention="30 days",
-        compression="zip",
-        enqueue=True,
-        level="INFO",
-        format=(
-            "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | "
-            "{extra[request_id]} | {name}:{function}:{line} - {message}"
-        ),
-    )
+        # Console Sink
+        logger.add(
+            sys.stderr,
+            format=(
+                "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
+                "<level>{level: <8}</level> | "
+                "<magenta>{extra[request_id]}</magenta> | "
+                "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
+                "<level>{message}</level>"
+            ),
+            level="INFO",
+        )
+
+        # File Sink
+        logger.add(
+            "logs/app.log",
+            rotation="10 MB",
+            retention="30 days",
+            compression="zip",
+            enqueue=True,
+            level="INFO",
+            format=(
+                "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | "
+                "{extra[request_id]} | {name}:{function}:{line} - {message}"
+            ),
+        )

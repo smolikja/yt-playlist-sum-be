@@ -11,7 +11,7 @@ from slowapi.errors import RateLimitExceeded
 import uuid
 
 from app.core.config import settings
-from app.core.logging import setup_logging
+from app.core.logging import LoggerConfigurator
 from app.core.limiter import limiter
 from app.core.exceptions import (
     AppException,
@@ -25,7 +25,7 @@ from app.api.auth import router as auth_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan context manager."""
-    setup_logging()
+    LoggerConfigurator.setup()
     logger.info("🚀 Application startup")
     yield
     logger.info("🛑 Application shutdown")

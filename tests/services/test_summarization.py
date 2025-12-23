@@ -4,6 +4,7 @@ from app.services.summarization import SummarizationService
 from app.models import Playlist, Video, LLMRole
 from app.core.providers.llm_provider import LLMProvider, LLMMessage
 from app.core.prompts import SummarizationPrompts
+from app.core.constants import SummarizationConfig
 
 # Mock response object from LLM
 class MockLLMResponse:
@@ -97,8 +98,8 @@ async def test_summarize_map_reduce_flow(summarization_service):
     # MAX_BATCH_CONTEXT_CHARS = 50 -> Total 60 chars will trigger Map-Reduce
     # MAP_CHUNK_SIZE_CHARS = 40 -> Will force chunks
     
-    with patch.object(SummarizationService, 'MAX_BATCH_CONTEXT_CHARS', 50), \
-         patch.object(SummarizationService, 'MAP_CHUNK_SIZE_CHARS', 40):
+    with patch.object(SummarizationConfig, 'MAX_BATCH_CONTEXT_CHARS', 50), \
+         patch.object(SummarizationConfig, 'MAP_CHUNK_SIZE_CHARS', 40):
         
         # Create videos with defined length
         # "Ten chars." = 10 chars.
@@ -141,7 +142,7 @@ async def test_chunking_logic(summarization_service):
     # Chunk 1: V0 (10) + V1 (10) = 20. Adding V2 would be 30 > 25. So Chunk 1 = [V0, V1]
     # Chunk 2: V2 (10) + V3 (10) = 20. Chunk 2 = [V2, V3]
     
-    with patch.object(SummarizationService, 'MAP_CHUNK_SIZE_CHARS', 25):
+    with patch.object(SummarizationConfig, 'MAP_CHUNK_SIZE_CHARS', 25):
         chunks = summarization_service._chunk_videos(videos)
         
         assert len(chunks) == 2
@@ -156,7 +157,7 @@ async def test_truncation_logic(summarization_service):
     """Test that individual videos are truncated if they exceed hard limit."""
     
     # Mock hard limit to 10 chars
-    with patch.object(SummarizationService, 'MAX_SINGLE_VIDEO_CHARS', 10):
+    with patch.object(SummarizationConfig, 'MAX_SINGLE_VIDEO_CHARS', 10):
         video = Video(
             id="v1", 
             title="Long", 

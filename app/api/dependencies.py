@@ -175,13 +175,17 @@ def get_llm_service() -> LLMService:
 # NEW RAG SERVICE FACTORIES
 # =============================================================================
 
+from app.core.constants import RAGConfig
+
+# ... (rest of imports)
+
 @lru_cache
 def get_chunker() -> TranscriptChunker:
     """Get transcript chunker with default settings."""
     return TranscriptChunker(
-        chunk_size=1000,
-        chunk_overlap=200,
-        min_chunk_size=100,
+        chunk_size=RAGConfig.CHUNK_SIZE,
+        chunk_overlap=RAGConfig.CHUNK_OVERLAP,
+        min_chunk_size=RAGConfig.MIN_CHUNK_SIZE,
     )
 
 
