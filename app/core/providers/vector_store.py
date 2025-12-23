@@ -5,7 +5,7 @@ This module defines a vendor-neutral interface for vector databases.
 Concrete implementations (pgvector, Qdrant) must implement this interface.
 """
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -24,7 +24,7 @@ class DocumentChunk(BaseModel):
     id: str
     content: str
     embedding: Optional[list[float]] = None
-    metadata: dict = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
     
     model_config = ConfigDict(frozen=True)
 
@@ -87,7 +87,7 @@ class VectorStore(ABC):
         query_embedding: list[float],
         top_k: int = 5,
         namespace: Optional[str] = None,
-        filter_metadata: Optional[dict] = None,
+        filter_metadata: Optional[dict[str, Any]] = None,
     ) -> list[SearchResult]:
         """
         Search for similar documents by embedding.

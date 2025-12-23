@@ -10,11 +10,13 @@ from typing import AsyncIterator, Optional
 
 from pydantic import BaseModel, ConfigDict
 
+from app.models.enums import LLMRole
+
 
 class LLMMessage(BaseModel):
     """Vendor-neutral message format for LLM conversations."""
     
-    role: str  # "system" | "user" | "assistant"
+    role: LLMRole
     content: str
     
     model_config = ConfigDict(frozen=True)
@@ -25,7 +27,7 @@ class LLMResponse(BaseModel):
     
     content: str
     model: str
-    usage: Optional[dict] = None
+    usage: Optional[dict[str, int]] = None
     
     model_config = ConfigDict(frozen=True)
 
@@ -41,8 +43,8 @@ class LLMProvider(ABC):
     Example:
         provider = GeminiProvider(api_key="...", model_name="gemini-2.5-flash")
         response = await provider.generate_text([
-            LLMMessage(role="system", content="You are helpful."),
-            LLMMessage(role="user", content="Hello!"),
+            LLMMessage(role=LLMRole.SYSTEM, content="You are helpful."),
+            LLMMessage(role=LLMRole.USER, content="Hello!"),
         ])
         print(response.content)
     """

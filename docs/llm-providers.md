@@ -8,7 +8,7 @@ The application uses a provider abstraction layer for model-agnostic AI integrat
 classDiagram
     class LLMProvider {
         <<abstract>>
-        +generate(messages, temperature, max_tokens) LLMResponse
+        +generate_text(messages, temperature, max_tokens) LLMResponse
         +generate_stream(messages, temperature) AsyncIterator
     }
     
@@ -33,30 +33,63 @@ classDiagram
 | **Groq** | Summarization | Llama 4 Scout | Very fast | Best for batch processing |
 | **Gemini** | Chat | Gemini 2.5 Flash | Fast | Best for interactive chat |
 
-## LLMProvider Interface
+## Core Types
+
+### LLMRole Enum
+
+Type-safe message roles for LLM communication:
 
 ```python
-from abc import ABC, abstractmethod
-from pydantic import BaseModel
+from app.models.enums import LLMRole
 
-class LLMMessage(BaseModel):
-    role: str  # "system", "user", "assistant"
-    content: str
+class LLMRole(str, Enum):
+    SYSTEM = "system"      # System instructions
+    USER = "user"          # User messages
+    ASSISTANT = "assistant" # Model responses
+```
 
+### LLMMessage
+
+Vendor-neutral message format:
+
+```python
+from app.core.providers.llm_provider import LLMMessage
+from app.models.enums import LLMRole
+
+message = LLMMessage(
+    role=LLMRole.USER,  # Type-safe enum value
+    content="Hello!"
+)
+```
+
+### LLMResponse
+
+Standardized response from providers:
+
+```python
 class LLMResponse(BaseModel):
     content: str
-    usage: dict  # token counts
+    model: str
+    usage: Optional[dict[str, int]] = None  # Token counts
+```
 
-class LLMProvider(ABC):
-    @abstractmethod
-    async def generate(
-        self,
-        messages: list[LLMMessage],
-        temperature: float = 0.7,
-        max_tokens: int = 4096,
-    ) -> LLMResponse:
-        """Generate a response from the LLM."""
-        pass
+## Usage Example
+
+```python
+from app.core.providers import GeminiProvider
+from app.core.providers.llm_provider import LLMMessage
+from app.models.enums import LLMRole
+
+provider = GeminiProvider(
+    model_name="gemini-2.5-flash",
+    api_key="AIza..."
+)
+
+response = await provider.generate_text([
+    LLMMessage(role=LLMRole.SYSTEM, content="You are a helpful assistant."),
+    LLMMessage(role=LLMRole.USER, content="Hello!"),
+])
+print(response.content)
 ```
 
 ## GeminiProvider
@@ -70,11 +103,6 @@ provider = GeminiProvider(
     model_name="gemini-2.5-flash",
     api_key="AIza..."
 )
-
-response = await provider.generate([
-    LLMMessage(role="user", content="Hello!")
-])
-print(response.content)
 ```
 
 ## GroqProvider
@@ -88,11 +116,6 @@ provider = GroqProvider(
     model_name="meta-llama/llama-4-scout-17b-16e-instruct",
     api_key="gsk_..."
 )
-
-response = await provider.generate([
-    LLMMessage(role="system", content="You are a helpful assistant."),
-    LLMMessage(role="user", content="Summarize this text...")
-])
 ```
 
 ## Dependency Injection
@@ -123,20 +146,37 @@ def get_summary_llm_provider() -> LLMProvider:
 
 ```python
 from app.core.providers.llm_provider import LLMProvider, LLMMessage, LLMResponse
+from app.models.enums import LLMRole
 
 class MyProvider(LLMProvider):
     def __init__(self, api_key: str, model_name: str):
         self.api_key = api_key
         self.model_name = model_name
     
-    async def generate(
+    async def generate_text(
         self,
         messages: list[LLMMessage],
         temperature: float = 0.7,
-        max_tokens: int = 4096,
+        max_tokens: Optional[int] = None,
     ) -> LLMResponse:
-        # Implement your provider logic
-        pass
+        # Convert messages to your API format
+        for msg in messages:
+            if msg.role == LLMRole.SYSTEM:
+                # Handle system message
+                pass
+            elif msg.role == LLMRole.USER:
+                # Handle user message
+                pass
+            elif msg.role == LLMRole.ASSISTANT:
+                # Handle assistant message
+                pass
+        
+        # Call your API and return response
+        return LLMResponse(
+            content="...",
+            model=self.model_name,
+            usage={"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30}
+        )
 ```
 
 2. Export in `app/core/providers/__init__.py`

@@ -8,6 +8,7 @@ from typing import Optional
 
 from loguru import logger
 
+from app.models.enums import LLMRole
 from app.core.providers.llm_provider import LLMProvider, LLMMessage
 from app.core.providers.embedding_provider import EmbeddingProvider
 from app.core.providers.vector_store import VectorStore, SearchResult
@@ -84,7 +85,7 @@ class RetrievalService:
         
         messages = [
             LLMMessage(
-                role="system",
+                role=LLMRole.SYSTEM,
                 content=(
                     "Given the conversation history and the user's latest question, "
                     "rewrite the question to be standalone and self-contained. "
@@ -95,7 +96,7 @@ class RetrievalService:
                 ),
             ),
             LLMMessage(
-                role="user",
+                role=LLMRole.USER,
                 content=f"Conversation History:\n{history_text}\n\nLatest Question: {user_query}",
             ),
         ]

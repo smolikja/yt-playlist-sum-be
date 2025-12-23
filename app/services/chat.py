@@ -12,7 +12,7 @@ from typing import List, Optional
 
 from loguru import logger
 
-from app.models import PlaylistRequest, SummaryResult, MessageRole, Playlist
+from app.models import PlaylistRequest, SummaryResult, MessageRole, Playlist, LLMRole
 from app.models.sql import ConversationModel, MessageModel
 from app.models.api import SummaryContent
 from app.services.youtube import YouTubeService
@@ -262,14 +262,14 @@ class ChatService:
         )
 
         # Build messages for LLM
-        messages = [LLMMessage(role="system", content=system_prompt)]
+        messages = [LLMMessage(role=LLMRole.SYSTEM, content=system_prompt)]
 
         # Add last 5 messages from history
         for msg in history[-5:]:
-            role = "user" if msg.role == MessageRole.USER.value else "assistant"
+            role = LLMRole.USER if msg.role == MessageRole.USER.value else LLMRole.ASSISTANT
             messages.append(LLMMessage(role=role, content=msg.content))
 
-        messages.append(LLMMessage(role="user", content=user_message))
+        messages.append(LLMMessage(role=LLMRole.USER, content=user_message))
 
         # 5. Generate response
         logger.debug(f"Calling LLM for conversation {conversation_id}")

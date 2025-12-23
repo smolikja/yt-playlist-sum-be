@@ -9,7 +9,7 @@ from typing import Optional
 
 from loguru import logger
 
-from app.models import Playlist, Video
+from app.models import Playlist, Video, LLMRole
 from app.core.providers.llm_provider import LLMProvider, LLMMessage
 
 
@@ -115,7 +115,7 @@ class SummarizationService:
         
         messages = [
             LLMMessage(
-                role="system",
+                role=LLMRole.SYSTEM,
                 content=(
                     "You are an expert content summarizer. "
                     "Analyze this video transcript and provide a comprehensive summary. "
@@ -129,7 +129,7 @@ class SummarizationService:
                 ),
             ),
             LLMMessage(
-                role="user",
+                role=LLMRole.USER,
                 content=f"Video Title: {video.title or 'Untitled'}\n\nTranscript:\n{transcript_text}",
             ),
         ]
@@ -160,7 +160,7 @@ class SummarizationService:
         
         messages = [
             LLMMessage(
-                role="system",
+                role=LLMRole.SYSTEM,
                 content=(
                     "You are an expert content summarizer. "
                     "Analyze the video transcript and provide a concise summary "
@@ -170,7 +170,7 @@ class SummarizationService:
                 ),
             ),
             LLMMessage(
-                role="user",
+                role=LLMRole.USER,
                 content=f"Video Title: {video.title or 'Untitled'}\n\nTranscript:\n{transcript_text}",
             ),
         ]
@@ -205,7 +205,7 @@ class SummarizationService:
         
         messages = [
             LLMMessage(
-                role="system",
+                role=LLMRole.SYSTEM,
                 content=(
                     "You are synthesizing multiple video summaries into a cohesive "
                     "global summary of the entire playlist. "
@@ -216,7 +216,7 @@ class SummarizationService:
                 ),
             ),
             LLMMessage(
-                role="user",
+                role=LLMRole.USER,
                 content=(
                     f"Playlist: {playlist_title or 'Untitled Playlist'}\n"
                     f"Number of Videos: {len(video_summaries)}\n\n"

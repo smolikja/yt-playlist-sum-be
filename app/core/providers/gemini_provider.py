@@ -10,6 +10,7 @@ import google.generativeai as genai
 from loguru import logger
 
 from app.core.providers.llm_provider import LLMProvider, LLMMessage, LLMResponse
+from app.models.enums import LLMRole
 
 
 class GeminiProvider(LLMProvider):
@@ -107,10 +108,10 @@ class GeminiProvider(LLMProvider):
         """
         parts = []
         for msg in messages:
-            if msg.role == "system":
+            if msg.role == LLMRole.SYSTEM:
                 parts.append(f"System Instructions: {msg.content}\n\n")
-            elif msg.role == "user":
+            elif msg.role == LLMRole.USER:
                 parts.append(f"User: {msg.content}\n")
-            elif msg.role == "assistant":
+            elif msg.role == LLMRole.ASSISTANT:
                 parts.append(f"Assistant: {msg.content}\n")
         return "".join(parts)
