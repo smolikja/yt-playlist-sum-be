@@ -1,9 +1,9 @@
 """
-Map-Reduce summarization service for large transcript collections.
+Map-Reduce summarization service for transcript collections.
 
-This module provides the SummarizationService class that uses a two-phase
-approach to summarize large playlists: first summarizing individual videos,
-then combining those summaries into a global view.
+This module provides the SummarizationService class that uses an adaptive
+approach to summarize videos: directly for single videos, or Map-Reduce
+for multiple videos.
 """
 from typing import Optional
 
@@ -15,18 +15,14 @@ from app.core.providers.llm_provider import LLMProvider, LLMMessage
 
 class SummarizationService:
     """
-    Map-Reduce summarization for large transcript collections.
+    Adaptive summarization for video transcripts.
     
-    Rather than trying to fit all transcripts in a single context window,
-    this service:
+    For single videos: Direct summarization (no Map-Reduce overhead)
+    For playlists: Map-Reduce approach
     
-    Phase 1 (Map): Summarizes each video independently
-    Phase 2 (Reduce): Combines video summaries into a coherent global summary
-    
-    This approach:
-    - Avoids context window limits
-    - Preserves per-video details
-    - Produces more structured output
+    Map-Reduce phases:
+    - Phase 1 (Map): Summarizes each video independently
+    - Phase 2 (Reduce): Combines video summaries into a coherent global summary
     
     Example:
         service = SummarizationService(llm_provider)
@@ -46,25 +42,38 @@ class SummarizationService:
     
     async def summarize_playlist(self, playlist: Playlist) -> str:
         """
-        Generate global summary using Map-Reduce approach.
+        Generate summary using adaptive approach based on video count.
+        
+        Single video: Direct summarization (faster, no overhead)
+        Multiple videos: Map-Reduce approach
         
         Args:
             playlist: The Playlist object with videos and transcripts.
             
         Returns:
-            The final combined summary as markdown text.
+            The final summary as markdown text.
         """
         valid_videos = [v for v in playlist.videos if v.transcript]
         
         if not valid_videos:
             return "No transcripts available for summarization."
         
+        video_count = len(valid_videos)
+        is_single_video = video_count == 1
+        
+        if is_single_video:
+            # Direct summarization for single video (skip Map-Reduce overhead)
+            logger.info(f"Summarizing single video: {valid_videos[0].title or valid_videos[0].id}")
+            return await self._summarize_single_video(valid_videos[0])
+        
+        # Map-Reduce for multiple videos
         # Phase 1: MAP - Summarize each video independently
-        logger.info(f"Phase 1 (Map): Summarizing {len(valid_videos)} videos")
+        video_label = "video" if video_count == 1 else "videos"
+        logger.info(f"Phase 1 (Map): Summarizing {video_count} {video_label}")
         video_summaries = []
         
         for i, video in enumerate(valid_videos, 1):
-            logger.debug(f"Summarizing video {i}/{len(valid_videos)}: {video.id}")
+            logger.debug(f"Summarizing video {i}/{video_count}: {video.id}")
             summary = await self._summarize_video(video)
             video_summaries.append({
                 "video_id": video.id,
@@ -84,9 +93,57 @@ class SummarizationService:
         logger.info("Phase 2 complete: Global summary generated")
         return final_summary
     
+    async def _summarize_single_video(self, video: Video) -> str:
+        """
+        Generate a comprehensive summary for a single video.
+        
+        Uses a specialized prompt for standalone video summarization
+        (not part of a playlist context).
+        
+        Args:
+            video: The Video object with transcript.
+            
+        Returns:
+            Detailed summary with structure appropriate for single video.
+        """
+        transcript_text = video.full_text
+        
+        # Truncate if too long
+        if len(transcript_text) > self.MAX_TRANSCRIPT_CHARS:
+            logger.warning(f"Truncating transcript for video {video.id}")
+            transcript_text = transcript_text[:self.MAX_TRANSCRIPT_CHARS] + "..."
+        
+        messages = [
+            LLMMessage(
+                role="system",
+                content=(
+                    "You are an expert content summarizer. "
+                    "Analyze this video transcript and provide a comprehensive summary. "
+                    "Structure your response with:\n"
+                    "1. Executive Summary (2-3 sentences)\n"
+                    "2. Key Topics Covered\n"
+                    "3. Main Points and Insights\n"
+                    "4. Conclusions or Takeaways\n\n"
+                    "The transcript may be in any language, but output in ENGLISH. "
+                    "Use markdown formatting with headers and bullet points."
+                ),
+            ),
+            LLMMessage(
+                role="user",
+                content=f"Video Title: {video.title or 'Untitled'}\n\nTranscript:\n{transcript_text}",
+            ),
+        ]
+        
+        response = await self.llm_provider.generate_text(
+            messages=messages,
+            temperature=0.3,
+        )
+        
+        return response.content
+    
     async def _summarize_video(self, video: Video) -> str:
         """
-        Summarize a single video transcript.
+        Summarize a single video transcript (for Map phase).
         
         Args:
             video: The Video object with transcript.

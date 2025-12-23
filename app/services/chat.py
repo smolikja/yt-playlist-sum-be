@@ -126,8 +126,12 @@ class ChatService:
             logger.warning("No valid transcripts found.")
             raise NotFoundError("transcripts", url_str)
 
-        # 3. Generate Summary using Map-Reduce
-        logger.info("Generating summary using Map-Reduce approach...")
+        # 3. Generate Summary (adaptive: direct for single video, Map-Reduce for playlist)
+        is_single_video = len(valid_videos) == 1
+        if is_single_video:
+            logger.info("Generating summary for single video...")
+        else:
+            logger.info(f"Generating summary using Map-Reduce for {len(valid_videos)} videos...")
         summary_markdown = await self.summarization_service.summarize_playlist(playlist)
 
         # 4. Index Transcripts for RAG

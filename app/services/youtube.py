@@ -224,8 +224,11 @@ class YouTubeService:
             Playlist: The updated Playlist object with video transcripts populated.
         """
         all_video_ids = [v.id for v in playlist.videos]
+        video_count = len(all_video_ids)
+        content_type = "video" if video_count == 1 else "playlist"
+        video_label = "video" if video_count == 1 else "videos"
         logger.info(
-            f"Processing {len(all_video_ids)} videos for playlist {playlist.id or playlist.url}"
+            f"Processing {video_count} {video_label} for {content_type} {playlist.title or playlist.url}"
         )
 
         # 1. Check DB for existing videos
