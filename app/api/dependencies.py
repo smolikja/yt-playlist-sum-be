@@ -24,7 +24,9 @@ from app.services.llm import LLMService
 from app.core.providers.llm_provider import LLMProvider
 from app.core.providers.embedding_provider import EmbeddingProvider
 from app.core.providers.vector_store import VectorStore
-from app.core.providers.enums import LLMProviderType, EmbeddingProviderType
+
+# Provider type enums
+from app.models.enums import LLMProviderType, EmbeddingProviderType
 
 # Concrete providers
 from app.core.providers.gemini_provider import GeminiProvider
@@ -51,20 +53,18 @@ def get_chat_llm_provider() -> LLMProvider:
     
     Default: Gemini (configured in settings.CHAT_LLM_PROVIDER)
     """
-    provider_type = settings.CHAT_LLM_PROVIDER.lower()
+    provider_type = settings.CHAT_LLM_PROVIDER
     
-    if provider_type == LLMProviderType.GEMINI.value:
+    if provider_type == LLMProviderType.GEMINI:
         return GeminiProvider(
             api_key=settings.GEMINI_API_KEY,
             model_name=settings.GEMINI_MODEL_NAME,
         )
-    elif provider_type == LLMProviderType.GROQ.value:
+    elif provider_type == LLMProviderType.GROQ:
         return GroqProvider(
             api_key=settings.GROQ_API_KEY,
             model_name=settings.GROQ_MODEL_NAME,
         )
-    elif provider_type == LLMProviderType.OPENAI.value:
-        raise NotImplementedError("OpenAI provider not yet implemented")
     else:
         raise ValueError(f"Unknown LLM provider: {provider_type}")
 
@@ -76,20 +76,18 @@ def get_summary_llm_provider() -> LLMProvider:
     
     Default: Groq/Llama (configured in settings.SUMMARY_LLM_PROVIDER)
     """
-    provider_type = settings.SUMMARY_LLM_PROVIDER.lower()
+    provider_type = settings.SUMMARY_LLM_PROVIDER
     
-    if provider_type == LLMProviderType.GROQ.value:
+    if provider_type == LLMProviderType.GROQ:
         return GroqProvider(
             api_key=settings.GROQ_API_KEY,
             model_name=settings.GROQ_MODEL_NAME,
         )
-    elif provider_type == LLMProviderType.GEMINI.value:
+    elif provider_type == LLMProviderType.GEMINI:
         return GeminiProvider(
             api_key=settings.GEMINI_API_KEY,
             model_name=settings.GEMINI_MODEL_NAME,
         )
-    elif provider_type == LLMProviderType.OPENAI.value:
-        raise NotImplementedError("OpenAI provider not yet implemented")
     else:
         raise ValueError(f"Unknown LLM provider: {provider_type}")
 
@@ -101,14 +99,12 @@ def get_embedding_provider() -> EmbeddingProvider:
     
     Default: SentenceTransformer (configured in settings.EMBEDDING_PROVIDER)
     """
-    provider_type = settings.EMBEDDING_PROVIDER.lower()
+    provider_type = settings.EMBEDDING_PROVIDER
     
-    if provider_type == EmbeddingProviderType.SENTENCE_TRANSFORMER.value:
+    if provider_type == EmbeddingProviderType.SENTENCE_TRANSFORMER:
         return SentenceTransformerEmbedding(
             model_name=settings.EMBEDDING_MODEL,
         )
-    elif provider_type == EmbeddingProviderType.OPENAI.value:
-        raise NotImplementedError("OpenAI embedding not yet implemented")
     else:
         raise ValueError(f"Unknown embedding provider: {provider_type}")
 

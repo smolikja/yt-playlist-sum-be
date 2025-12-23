@@ -1,8 +1,17 @@
+"""
+Application configuration using pydantic-settings.
+"""
 from typing import List, Union
+
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.models.enums import LLMProviderType, EmbeddingProviderType, VectorStoreType
+
+
 class Settings(BaseSettings):
+    """Application settings loaded from environment variables."""
+    
     PROJECT_NAME: str = "Youtube Playlist Summarizer"
     BACKEND_CORS_ORIGINS: Union[List[str], str]
 
@@ -33,13 +42,14 @@ class Settings(BaseSettings):
     # Auth
     SECRET_KEY: str
 
-    # RAG Configuration
-    CHAT_LLM_PROVIDER: str = "gemini"
-    SUMMARY_LLM_PROVIDER: str = "groq"
-    EMBEDDING_PROVIDER: str = "sentence_transformer"
+    # RAG Configuration - using type-safe enums
+    CHAT_LLM_PROVIDER: LLMProviderType = LLMProviderType.GEMINI
+    SUMMARY_LLM_PROVIDER: LLMProviderType = LLMProviderType.GROQ
+    EMBEDDING_PROVIDER: EmbeddingProviderType = EmbeddingProviderType.SENTENCE_TRANSFORMER
     EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
-    VECTOR_STORE: str = "pgvector"
+    VECTOR_STORE: VectorStoreType = VectorStoreType.PGVECTOR
 
     model_config = SettingsConfigDict(env_file=".env")
+
 
 settings = Settings()
