@@ -1,179 +1,117 @@
-# Youtube Playlist Summarizer Backend
+# YouTube Playlist Summarizer Backend
 
-A FastAPI-based backend application designed to summarize YouTube playlists using the Gemini API. This project serves as the server-side component for processing playlist data, caching transcripts, and generating concise, interactive summaries.
+A FastAPI-based backend for summarizing YouTube playlists using AI. Features RAG-enhanced chat with vector search and multi-provider LLM support.
 
 ## Features
 
-- **FastAPI Framework:** High-performance, easy-to-learn, fast-to-code, ready for production.
-- **Modern Python:** Built with Python 3.14+ and type hints.
-- **Dependency Management:** Uses `uv` for blazing fast package management and virtual environment handling.
-- **PostgreSQL + pgvector:** Vector database for RAG (Retrieval-Augmented Generation) capabilities.
-- **Efficient Caching:** Caches YouTube video transcripts to minimize external API calls.
-- **Hybrid AI Strategy:** Utilizes **Google Gemini** for interactive chat and **Groq (Llama 3)** for high-speed playlist summarization.
-- **Configuration:** Robust settings management using `pydantic-settings`.
+- **Playlist Summarization** - Extract and summarize YouTube playlist transcripts
+- **RAG-Enhanced Chat** - Context-aware conversations with vector similarity search
+- **Multi-Provider LLMs** - Support for Gemini and Groq with model-agnostic architecture
+- **Transcript Caching** - PostgreSQL-backed caching to minimize API calls
+- **JWT Authentication** - Secure user authentication with FastAPI Users
 
-## Tech Stack
-
-- **Language:** Python 3.14+
-- **Framework:** FastAPI
-- **Database:** PostgreSQL with pgvector (SQLAlchemy Async, Alembic)
-- **AI/LLM:** Google Gemini API & Groq API
-- **Package Manager:** uv
-- **Environment Management:** python-dotenv, pydantic-settings
-
-## Getting Started
-
-### Prerequisites
-
-- [uv](https://github.com/astral-sh/uv) installed on your machine.
-- Python 3.14+ (managed by uv).
-- [Docker](https://www.docker.com/) for local PostgreSQL database.
-
-### Installation
-
-1. **Clone the repository:**
-
-    ```bash
-    git clone <repository-url>
-    cd yt-playlist-sum-be
-    ```
-
-2. **Install dependencies:**
-
-    ```bash
-    uv sync
-    ```
-
-3. **Start PostgreSQL:**
-
-    ```bash
-    docker compose up -d
-    ```
-
-    This starts a PostgreSQL database with pgvector extension at `localhost:5432`.
-
-### Configuration
-
-1. **Environment Variables:**
-
-    Copy the example environment file to `.env`:
-
-    ```bash
-    cp .env.example .env
-    ```
-
-2. **Update Settings:**
-
-    Open `.env` and configure your keys:
-
-    ```env
-    # Gemini API
-    GEMINI_MODEL_NAME=gemini-2.5-flash
-    GEMINI_API_KEY=your_gemini_api_key_here
-
-    # Groq API
-    GROQ_MODEL_NAME=meta-llama/llama-4-scout-17b-16e-instruct
-    GROQ_API_KEY=your_groq_api_key_here
-
-    # Database (Docker Compose default)
-    DATABASE_URL=postgresql+asyncpg://dev:dev@localhost:5432/ytsum_dev
-
-    # DataImpulse Proxy
-    DATAIMPULSE_HOST=gw.dataimpulse.com
-    DATAIMPULSE_PORT=823
-    DATAIMPULSE_LOGIN=
-    DATAIMPULSE_PASSWORD=
-    ```
-
-### Database Setup
-
-This project uses **Alembic** for database migrations. Before running the application, you must initialize the database schema.
-
-1. **Run Migrations:**
-
-    Apply the latest database changes:
-
-    ```bash
-    uv run alembic upgrade head
-    ```
-
-### Running the Application
-
-You can start the server using `uv run` to ensure it uses the project's virtual environment.
-
-**Development Mode (with auto-reload):**
+## Quick Start
 
 ```bash
+# Install dependencies
+uv sync
+
+# Start PostgreSQL with pgvector
+docker-compose up -d
+
+# Configure environment
+cp .env.example .env
+# Edit .env with your API keys
+
+# Run migrations
+uv run alembic upgrade head
+
+# Start server
 uv run uvicorn app.main:app --reload
 ```
 
-The API will be available at `http://localhost:8000`.
+API available at http://localhost:8000
 
-## Development Workflow & Best Practices
+## Documentation
 
-### Database Migrations
+| Document | Description |
+|----------|-------------|
+| **[Architecture](docs/architecture.md)** | System overview, request flows, design principles |
+| **[API Reference](docs/api-reference.md)** | Complete endpoint documentation |
+| **[RAG Pipeline](docs/rag-pipeline.md)** | Vector indexing and retrieval system |
+| **[Authentication](docs/authentication.md)** | JWT auth with FastAPI Users |
+| **[YouTube Service](docs/youtube-service.md)** | Playlist extraction and transcript caching |
+| **[LLM Providers](docs/llm-providers.md)** | Gemini, Groq, and provider abstraction |
+| **[Database](docs/database.md)** | PostgreSQL schema and migrations |
+| **[Configuration](docs/configuration.md)** | Environment variables reference |
+| **[Development](docs/development.md)** | Setup guide and project structure |
 
-When modifying `app/models/sql.py`, always create a new migration to keep the database schema in sync.
+## Tech Stack
 
-1. **Make changes** to SQLAlchemy models.
-2. **Generate a migration script:**
-
-    ```bash
-    uv run alembic revision --autogenerate -m "describe your changes"
-    ```
-
-3. **Verify the generated script** in `alembic/versions/`.
-4. **Apply the migration:**
-
-    ```bash
-    uv run alembic upgrade head
-    ```
-
-### Testing
-
-Tests are located in the `tests/` directory.
-
-```bash
-# Run all tests (assuming pytest is installed/configured)
-uv run pytest
-```
-
-### Dependency Management
-
-To add a new dependency:
-
-```bash
-uv add <package-name>
-```
-
-To update dependencies:
-
-```bash
-uv lock --upgrade
-```
-
-## API Documentation
-
-FastAPI provides automatic interactive documentation. Once the server is running, visit:
-
-- **Swagger UI:** [http://localhost:8000/docs](http://localhost:8000/docs)
-- **ReDoc:** [http://localhost:8000/redoc](http://localhost:8000/redoc)
+- **Framework:** FastAPI
+- **Database:** PostgreSQL with pgvector
+- **LLMs:** Google Gemini, Groq (Llama)
+- **Embeddings:** SentenceTransformers (all-MiniLM-L6-v2)
+- **Auth:** FastAPI Users + JWT
+- **Package Manager:** uv
 
 ## Project Structure
 
-```text
-yt-playlist-sum-be/
-├── alembic/          # Database migration scripts
-├── app/
-│   ├── api/          # API route endpoints
-│   ├── core/         # Core config, DB connection, logging
-│   ├── models/       # Pydantic and SQLAlchemy models
-│   ├── repositories/ # Data access layer
-│   ├── services/     # Business logic (LLM, YouTube, Chat)
-│   └── main.py       # Application entry point
-├── tests/            # Test suite
-├── docker-compose.yml # PostgreSQL with pgvector for local dev
-├── .env              # Environment variables (do not commit secrets)
-├── pyproject.toml    # Project dependencies and settings
-└── README.md         # Project documentation
 ```
+yt-playlist-sum-be/
+├── app/
+│   ├── api/          # Routes, auth, dependencies
+│   ├── core/         # Config, DB, providers
+│   ├── models/       # Pydantic & SQLAlchemy models
+│   ├── repositories/ # Data access layer
+│   └── services/     # Business logic
+├── docs/             # Documentation
+├── alembic/          # Database migrations
+├── tests/            # Test suite
+└── docker-compose.yml
+```
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/summarize` | Summarize a YouTube playlist |
+| POST | `/api/v1/chat` | Chat within a conversation context |
+| GET | `/api/v1/conversations` | List user conversations |
+| GET | `/api/v1/conversations/{id}` | Get conversation details |
+| DELETE | `/api/v1/conversations/{id}` | Delete a conversation |
+
+Full documentation: [API Reference](docs/api-reference.md)
+
+## Configuration
+
+Required environment variables:
+
+```env
+DATABASE_URL=postgresql+asyncpg://dev:dev@localhost:5432/ytsum_dev
+SECRET_KEY=your_secret_key
+GEMINI_API_KEY=your_gemini_key
+GROQ_API_KEY=your_groq_key
+```
+
+Full reference: [Configuration](docs/configuration.md)
+
+## Development
+
+```bash
+# Install dependencies
+uv sync
+
+# Run tests
+uv run pytest
+
+# Create migration
+uv run alembic revision --autogenerate -m "description"
+
+# Apply migrations
+uv run alembic upgrade head
+```
+
+## License
+
+MIT
