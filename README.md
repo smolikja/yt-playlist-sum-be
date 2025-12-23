@@ -7,7 +7,7 @@ A FastAPI-based backend application designed to summarize YouTube playlists usin
 - **FastAPI Framework:** High-performance, easy-to-learn, fast-to-code, ready for production.
 - **Modern Python:** Built with Python 3.14+ and type hints.
 - **Dependency Management:** Uses `uv` for blazing fast package management and virtual environment handling.
-- **Database Architecture:** Uses SQLAlchemy with async support and Alembic for migrations.
+- **PostgreSQL + pgvector:** Vector database for RAG (Retrieval-Augmented Generation) capabilities.
 - **Efficient Caching:** Caches YouTube video transcripts to minimize external API calls.
 - **Hybrid AI Strategy:** Utilizes **Google Gemini** for interactive chat and **Groq (Llama 3)** for high-speed playlist summarization.
 - **Configuration:** Robust settings management using `pydantic-settings`.
@@ -16,7 +16,7 @@ A FastAPI-based backend application designed to summarize YouTube playlists usin
 
 - **Language:** Python 3.14+
 - **Framework:** FastAPI
-- **Database:** SQLAlchemy (Async), Alembic
+- **Database:** PostgreSQL with pgvector (SQLAlchemy Async, Alembic)
 - **AI/LLM:** Google Gemini API & Groq API
 - **Package Manager:** uv
 - **Environment Management:** python-dotenv, pydantic-settings
@@ -27,6 +27,7 @@ A FastAPI-based backend application designed to summarize YouTube playlists usin
 
 - [uv](https://github.com/astral-sh/uv) installed on your machine.
 - Python 3.14+ (managed by uv).
+- [Docker](https://www.docker.com/) for local PostgreSQL database.
 
 ### Installation
 
@@ -42,6 +43,14 @@ A FastAPI-based backend application designed to summarize YouTube playlists usin
     ```bash
     uv sync
     ```
+
+3. **Start PostgreSQL:**
+
+    ```bash
+    docker compose up -d
+    ```
+
+    This starts a PostgreSQL database with pgvector extension at `localhost:5432`.
 
 ### Configuration
 
@@ -66,10 +75,8 @@ A FastAPI-based backend application designed to summarize YouTube playlists usin
     GROQ_MODEL_NAME=meta-llama/llama-4-scout-17b-16e-instruct
     GROQ_API_KEY=your_groq_api_key_here
 
-    # Database Configuration
-    DATABASE_URL=sqlite+aiosqlite:///./sql_app.db
-    # Production recommended:
-    # DATABASE_URL=postgresql+asyncpg://user:password@localhost/dbname
+    # Database (Docker Compose default)
+    DATABASE_URL=postgresql+asyncpg://dev:dev@localhost:5432/ytsum_dev
 
     # DataImpulse Proxy
     DATAIMPULSE_HOST=gw.dataimpulse.com
@@ -165,6 +172,7 @@ yt-playlist-sum-be/
 │   ├── services/     # Business logic (LLM, YouTube, Chat)
 │   └── main.py       # Application entry point
 ├── tests/            # Test suite
+├── docker-compose.yml # PostgreSQL with pgvector for local dev
 ├── .env              # Environment variables (do not commit secrets)
 ├── pyproject.toml    # Project dependencies and settings
 └── README.md         # Project documentation

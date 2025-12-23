@@ -3,9 +3,7 @@ from sqlalchemy.orm import declarative_base
 from app.core.config import settings
 
 db_url = settings.DATABASE_URL
-if db_url.startswith("sqlite://") and "aiosqlite" not in db_url:
-    db_url = db_url.replace("sqlite://", "sqlite+aiosqlite://")
-elif db_url.startswith("postgresql://") and "asyncpg" not in db_url:
+if db_url.startswith("postgresql://") and "asyncpg" not in db_url:
     db_url = db_url.replace("postgresql://", "postgresql+asyncpg://")
 
 engine = create_async_engine(db_url, echo=False)

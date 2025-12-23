@@ -77,3 +77,32 @@ class MessageModel(Base):
     created_at = Column(DateTime, default=func.now())
 
     conversation = relationship("ConversationModel", back_populates="messages")
+
+
+class DocumentEmbedding(Base):
+    """
+    SQLAlchemy ORM model for document embeddings in the vector store.
+    
+    Uses pgvector extension for vector operations and HNSW indexing.
+    The migration c9d0e1f2a3b4 converts this to native vector(384) type.
+    
+    Attributes:
+        id (str): Unique identifier ({video_id}_{chunk_index}).
+        content (str): The text content of the chunk.
+        embedding: The embedding vector (384 dimensions for all-MiniLM-L6-v2).
+        chunk_metadata (dict): Additional metadata (video_id, timestamps, etc.).
+        namespace (str): Grouping key (typically playlist URL).
+        created_at (datetime): Timestamp of creation.
+    """
+    __tablename__ = "document_embeddings"
+
+    id = Column(String, primary_key=True)
+    content = Column(Text, nullable=False)
+    # Stored as Text in base migration, converted to vector(384) by c9d0e1f2a3b4
+    embedding = Column(Text, nullable=False)
+    # Note: Cannot use 'metadata' as it's reserved by SQLAlchemy
+    chunk_metadata = Column(JSON, default={})
+    namespace = Column(String, index=True, nullable=True)
+    created_at = Column(DateTime, default=func.now())
+
+

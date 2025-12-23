@@ -87,7 +87,7 @@ async def chat_with_playlist(
         payload.conversation_id,
         payload.message,
         user.id,
-        payload.use_transcripts,
+        payload.use_rag,
     )
     duration = time.perf_counter() - start_time
     logger.info(f"Chat message processed in {duration:.2f}s")

@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Optional
 import uuid
 
-from pydantic import BaseModel, ConfigDict, HttpUrl, field_validator
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 from fastapi_users import schemas
 
 
@@ -61,9 +61,10 @@ class ChatRequest(BaseModel):
 
     conversation_id: str
     message: str
-    use_transcripts: bool = False
+    # Accept both 'use_rag' and 'use_transcripts' for backward compatibility
+    use_rag: bool = Field(default=True, alias="use_transcripts")
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
 
 class ChatResponse(BaseModel):

@@ -1,53 +1,81 @@
 """
 Chat service for orchestrating playlist summarization and conversation management.
+
+This module integrates the RAG (Retrieval-Augmented Generation) pipeline:
+- SummarizationService for Map-Reduce summarization
+- IngestionService for vector indexing
+- RetrievalService for context retrieval during chat
 """
 import uuid
 from datetime import datetime, timezone
 from typing import List, Optional
+
 from loguru import logger
 
-from app.models import PlaylistRequest, SummaryResult, MessageRole
+from app.models import PlaylistRequest, SummaryResult, MessageRole, Playlist
 from app.models.sql import ConversationModel, MessageModel
+from app.models.api import SummaryContent
 from app.services.youtube import YouTubeService
-from app.services.llm import LLMService
+from app.services.ingestion import IngestionService
+from app.services.summarization import SummarizationService
+from app.services.retrieval import RetrievalService
 from app.repositories.chat import ChatRepository
 from app.core.exceptions import NotFoundError, ForbiddenError, BadRequestError, InternalServerError
-from app.core.cache import get_cached_summary, set_cached_summary, CachedSummary
+from app.core.cache import get_cached_summary, set_cached_summary
+from app.core.providers.llm_provider import LLMProvider, LLMMessage
 
 
 class ChatService:
-    """Service for managing chat sessions and conversations."""
+    """
+    Service for managing chat sessions and conversations with RAG integration.
+    
+    This service orchestrates:
+    1. Playlist summarization using Map-Reduce approach
+    2. Vector embedding and indexing of transcripts
+    3. RAG-based chat with semantic retrieval
+    """
 
     def __init__(
         self,
         youtube_service: YouTubeService,
-        llm_service: LLMService,
+        summarization_service: SummarizationService,
+        ingestion_service: IngestionService,
+        retrieval_service: RetrievalService,
+        chat_llm_provider: LLMProvider,
         chat_repository: ChatRepository,
     ):
         """
-        Initialize the ChatService.
+        Initialize the ChatService with RAG components.
 
         Args:
             youtube_service: Service for YouTube operations.
-            llm_service: Service for LLM operations.
+            summarization_service: Service for Map-Reduce summarization.
+            ingestion_service: Service for vector indexing.
+            retrieval_service: Service for RAG retrieval.
+            chat_llm_provider: LLM provider for chat responses.
             chat_repository: Repository for chat data access.
         """
         self.youtube_service = youtube_service
-        self.llm_service = llm_service
+        self.summarization_service = summarization_service
+        self.ingestion_service = ingestion_service
+        self.retrieval_service = retrieval_service
+        self.chat_llm_provider = chat_llm_provider
         self.chat_repository = chat_repository
 
     async def create_session(
         self, user_id: Optional[uuid.UUID], request: PlaylistRequest
     ) -> SummaryResult:
         """
-        Orchestrate the process of summarizing a playlist.
+        Orchestrate the process of summarizing a playlist with RAG indexing.
 
-        1. Check cache for existing summary.
-        2. Extract playlist info.
-        3. Fetch transcripts.
-        4. Generate summary.
-        5. Save the result as a conversation history.
-        6. Cache the summary.
+        Flow:
+        1. Check cache for existing summary
+        2. Extract playlist info
+        3. Fetch transcripts
+        4. Generate summary using Map-Reduce
+        5. Index transcripts for RAG
+        6. Save conversation
+        7. Cache the summary
 
         Args:
             user_id: The user ID (optional for anonymous usage).
@@ -68,7 +96,6 @@ class ChatService:
         cached = get_cached_summary(url_str)
         if cached:
             logger.info(f"Cache hit for URL: {url_str}")
-            # Create new conversation for this user with cached data
             conversation = ConversationModel(
                 id=str(uuid.uuid4()),
                 user_id=user_id,
@@ -84,7 +111,7 @@ class ChatService:
                 summary_markdown=cached["summary_markdown"],
             )
 
-        # 1. Extract Playlist Info (now async)
+        # 1. Extract Playlist Info
         playlist = await self.youtube_service.extract_playlist_info(url_str)
 
         if not playlist.videos:
@@ -99,33 +126,48 @@ class ChatService:
             logger.warning("No valid transcripts found.")
             raise NotFoundError("transcripts", url_str)
 
-        # 3. Generate Summary
-        generated_content = await self.llm_service.generate_summary(playlist)
+        # 3. Generate Summary using Map-Reduce
+        logger.info("Generating summary using Map-Reduce approach...")
+        summary_markdown = await self.summarization_service.summarize_playlist(playlist)
 
-        # 4. Save Conversation
+        # 4. Index Transcripts for RAG
+        logger.info("Indexing transcripts for RAG...")
+        try:
+            chunk_count = await self.ingestion_service.ingest_playlist(
+                playlist, 
+                namespace=url_str,  # Use URL as namespace for retrieval
+            )
+            logger.info(f"Indexed {chunk_count} chunks for RAG")
+        except Exception as e:
+            # Log but don't fail - RAG indexing is not critical for basic functionality
+            logger.error(f"Failed to index transcripts for RAG: {e}")
+
+        # 5. Save Conversation
         try:
             conversation = ConversationModel(
                 id=str(uuid.uuid4()),
                 user_id=user_id,
-                title=generated_content.playlist_title,
+                title=playlist.title,
                 playlist_url=url_str,
-                summary=generated_content.summary_markdown,
+                summary=summary_markdown,
             )
             await self.chat_repository.create_conversation(conversation)
 
             final_summary_result = SummaryResult(
                 conversation_id=conversation.id,
-                **generated_content.model_dump(),
+                playlist_title=playlist.title,
+                video_count=len(playlist.videos),
+                summary_markdown=summary_markdown,
             )
             logger.info(f"Saved conversation {conversation.id} for user {user_id}")
 
-            # 5. Cache the summary
+            # 6. Cache the summary
             set_cached_summary(
                 url_str,
                 {
-                    "playlist_title": generated_content.playlist_title,
-                    "video_count": generated_content.video_count,
-                    "summary_markdown": generated_content.summary_markdown,
+                    "playlist_title": playlist.title,
+                    "video_count": len(playlist.videos),
+                    "summary_markdown": summary_markdown,
                 },
             )
 
@@ -140,16 +182,25 @@ class ChatService:
         conversation_id: str,
         user_message: str,
         user_id: uuid.UUID,
-        use_transcripts: bool = False,
+        use_rag: bool = True,
     ) -> str:
         """
-        Process a user message in a conversation.
+        Process a user message using RAG for context retrieval.
+
+        Flow:
+        1. Validate conversation ownership
+        2. Fetch chat history
+        3. Transform query to standalone (if history exists)
+        4. Retrieve relevant chunks from vector store
+        5. Build dynamic prompt with context
+        6. Generate response
+        7. Save messages
 
         Args:
             conversation_id: The conversation ID.
             user_message: The user's message.
             user_id: The user ID.
-            use_transcripts: Whether to include full transcripts in context.
+            use_rag: Whether to use RAG for context retrieval (default: True).
 
         Returns:
             str: The AI-generated response.
@@ -174,28 +225,57 @@ class ChatService:
             )
             raise ForbiddenError("You do not have permission to access this conversation.")
 
-        # 2. Fetch transcripts (using cache) if requested
-        context_text = ""
-        if use_transcripts:
-            logger.debug(f"Fetching context for playlist {conversation.playlist_url}")
-            playlist = await self.youtube_service.extract_playlist_info(
-                conversation.playlist_url
-            )
-            transcripts = await self.youtube_service.fetch_transcripts(playlist)
-            context_text = self.llm_service.prepare_context(transcripts)
-        else:
-            logger.debug("Skipping transcript fetch (use_transcripts=False)")
-
-        # 3. Fetch history
+        # 2. Fetch history
         history = await self.chat_repository.get_messages(conversation_id)
+        history_dicts = [{"role": m.role, "content": m.content} for m in history]
 
-        # 4. Call LLM
-        logger.debug(f"Calling LLM for conversation {conversation_id}")
-        response_text = await self.llm_service.chat_completion(
-            context_text, conversation.summary, history, user_message
+        # 3. Transform query and retrieve context
+        context_text = ""
+        if use_rag and conversation.playlist_url:
+            try:
+                # Transform query to standalone
+                standalone_query = await self.retrieval_service.transform_query(
+                    user_message, history_dicts
+                )
+
+                # Retrieve relevant chunks
+                results = await self.retrieval_service.retrieve_context(
+                    query=standalone_query,
+                    namespace=conversation.playlist_url,
+                    top_k=5,
+                )
+
+                # Format context with timestamps
+                context_text = self.retrieval_service.format_context(results)
+                logger.debug(f"Retrieved {len(results)} chunks for context")
+            except Exception as e:
+                logger.warning(f"RAG retrieval failed, falling back to summary only: {e}")
+
+        # 4. Build dynamic prompt
+        system_prompt = self._build_system_prompt(
+            context=context_text,
+            summary=conversation.summary,
         )
 
-        # 5. Save messages
+        # Build messages for LLM
+        messages = [LLMMessage(role="system", content=system_prompt)]
+
+        # Add last 5 messages from history
+        for msg in history[-5:]:
+            role = "user" if msg.role == MessageRole.USER.value else "assistant"
+            messages.append(LLMMessage(role=role, content=msg.content))
+
+        messages.append(LLMMessage(role="user", content=user_message))
+
+        # 5. Generate response
+        logger.debug(f"Calling LLM for conversation {conversation_id}")
+        response = await self.chat_llm_provider.generate_text(
+            messages=messages,
+            temperature=0.7,
+        )
+        response_text = response.content
+
+        # 6. Save messages
         user_msg = MessageModel(
             conversation_id=conversation_id,
             role=MessageRole.USER.value,
@@ -210,28 +290,58 @@ class ChatService:
         )
         await self.chat_repository.add_message(model_msg)
 
-        # Update conversation timestamp
-        conversation.updated_at = datetime.now(timezone.utc)
+        # Update conversation timestamp (use naive datetime for TIMESTAMP WITHOUT TIME ZONE)
+        conversation.updated_at = datetime.utcnow()
         await self.chat_repository.update_conversation(conversation)
 
         logger.debug(f"Message processed and saved for conversation {conversation_id}")
 
         return response_text
 
+    def _build_system_prompt(self, context: str, summary: Optional[str]) -> str:
+        """
+        Build the system prompt with dynamic context.
+
+        Args:
+            context: Retrieved context from RAG (if available).
+            summary: Pre-computed playlist summary.
+
+        Returns:
+            Formatted system prompt.
+        """
+        return f"""You are a helpful AI assistant discussing a YouTube Playlist.
+
+## Playlist Summary
+{summary or 'No summary available.'}
+
+## Retrieved Context (Relevant Transcript Sections)
+{context or 'No specific context retrieved. Answer based on the summary and chat history.'}
+
+## Instructions
+- Answer based on the context and summary above
+- If the answer isn't in the context, say so honestly
+- Cite timestamps when referencing specific content (e.g., "at 2:34")
+- Always respond in English
+- Be concise but thorough
+"""
+
+    def _format_timestamp(self, seconds: float) -> str:
+        """Format seconds to MM:SS or HH:MM:SS."""
+        hours = int(seconds // 3600)
+        minutes = int((seconds % 3600) // 60)
+        secs = int(seconds % 60)
+        if hours:
+            return f"{hours}:{minutes:02d}:{secs:02d}"
+        return f"{minutes}:{secs:02d}"
+
+    # =========================================================================
+    # CONVERSATION MANAGEMENT (unchanged from original)
+    # =========================================================================
+
     async def delete_conversation(
         self, conversation_id: str, user_id: uuid.UUID
     ) -> None:
-        """
-        Delete a conversation if it exists and belongs to the user.
-
-        Args:
-            conversation_id: The conversation ID.
-            user_id: The user ID.
-
-        Raises:
-            NotFoundError: If conversation not found.
-            ForbiddenError: If user doesn't own the conversation.
-        """
+        """Delete a conversation if it exists and belongs to the user."""
         conversation = await self.chat_repository.get_conversation(conversation_id)
         if not conversation:
             logger.warning(f"Conversation {conversation_id} not found for deletion")
@@ -244,23 +354,20 @@ class ChatService:
             )
             raise ForbiddenError("You do not have permission to delete this conversation.")
 
+        # Also delete indexed chunks
+        if conversation.playlist_url:
+            try:
+                await self.ingestion_service.delete_playlist(conversation.playlist_url)
+            except Exception as e:
+                logger.warning(f"Failed to delete indexed chunks: {e}")
+
         await self.chat_repository.delete_conversation(conversation)
         logger.info(f"Conversation {conversation_id} deleted by user {user_id}")
 
     async def claim_conversation(
         self, conversation_id: str, user_id: uuid.UUID
     ) -> None:
-        """
-        Claim an anonymous conversation for a user.
-
-        Args:
-            conversation_id: The conversation ID.
-            user_id: The user ID.
-
-        Raises:
-            NotFoundError: If conversation not found.
-            ForbiddenError: If conversation is already claimed.
-        """
+        """Claim an anonymous conversation for a user."""
         conversation = await self.chat_repository.get_conversation(conversation_id)
         if not conversation:
             raise NotFoundError("Conversation", conversation_id)
@@ -277,37 +384,13 @@ class ChatService:
     async def get_history(
         self, user_id: uuid.UUID, limit: int = 20, offset: int = 0
     ) -> List[ConversationModel]:
-        """
-        Retrieve the conversation history for a user.
-
-        Args:
-            user_id: The user ID.
-            limit: Maximum number of results.
-            offset: Pagination offset.
-
-        Returns:
-            List of ConversationModel objects.
-        """
+        """Retrieve the conversation history for a user."""
         return await self.chat_repository.get_user_conversations(user_id, limit, offset)
 
     async def get_conversation_detail(
         self, conversation_id: str, user_id: uuid.UUID
     ) -> ConversationModel:
-        """
-        Retrieve full details of a conversation, including messages.
-
-        Enforces ownership validation.
-
-        Args:
-            conversation_id: The conversation ID.
-            user_id: The user ID.
-
-        Returns:
-            ConversationModel with messages.
-
-        Raises:
-            NotFoundError: If conversation not found or user doesn't own it.
-        """
+        """Retrieve full details of a conversation, including messages."""
         conversation = await self.chat_repository.get_conversation_with_messages(
             conversation_id, user_id
         )

@@ -33,6 +33,13 @@ class Settings(BaseSettings):
     # Auth
     SECRET_KEY: str
 
+    # RAG Configuration
+    CHAT_LLM_PROVIDER: str = "gemini"
+    SUMMARY_LLM_PROVIDER: str = "groq"
+    EMBEDDING_PROVIDER: str = "sentence_transformer"
+    EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
+    VECTOR_STORE: str = "pgvector"
+
     model_config = SettingsConfigDict(env_file=".env")
 
 settings = Settings()
