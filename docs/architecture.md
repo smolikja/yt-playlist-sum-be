@@ -85,10 +85,16 @@ graph TB
 1. **Request** → `POST /api/v1/summarize` with playlist URL
 2. **Extract** → `YouTubeService` fetches playlist metadata via yt-dlp
 3. **Transcripts** → Fetch/cache video transcripts from YouTube
-4. **Summarize** → `SummarizationService` uses Map-Reduce pattern
+4. **Summarize** → `SummarizationService` uses Adaptive Strategy (Direct/Map-Reduce)
 5. **Index** → `IngestionService` chunks and embeds transcripts into pgvector
 6. **Store** → Save conversation and summary to database
 7. **Response** → Return summary with conversation ID
+
+> **Note on Summarization Strategy:**
+> The system dynamically selects the optimal summarization method based on total transcript volume:
+> - **Direct (Batch):** Processes all transcripts in a single large-context prompt (preferred for speed and quality).
+> - **Chunked Map-Reduce:** Groups videos into optimized batches (chunks) to minimize requests while handling massive datasets.
+> - **Single Video:** Uses a specialized prompt for individual video requests.
 
 ### Chat Flow
 

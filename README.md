@@ -37,6 +37,7 @@ API available at http://localhost:8000
 | Document | Description |
 |----------|-------------|
 | **[Architecture](docs/architecture.md)** | System overview, request flows, design principles |
+| **[Summarization](docs/summarization.md)** | Adaptive strategy (Direct, Map-Reduce), prompts, and limits |
 | **[API Reference](docs/api-reference.md)** | Complete endpoint documentation |
 | **[RAG Pipeline](docs/rag-pipeline.md)** | Vector indexing and retrieval system |
 | **[Authentication](docs/authentication.md)** | JWT auth with FastAPI Users |
