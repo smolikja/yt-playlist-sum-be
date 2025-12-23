@@ -41,6 +41,7 @@ API available at http://localhost:8000
 | **[RAG Pipeline](docs/rag-pipeline.md)** | Vector indexing and retrieval system |
 | **[Authentication](docs/authentication.md)** | JWT auth with FastAPI Users |
 | **[YouTube Service](docs/youtube-service.md)** | Playlist extraction and transcript caching |
+| **[Proxy Service](docs/proxy-service.md)** | DataImpulse rotating proxy integration |
 | **[LLM Providers](docs/llm-providers.md)** | Gemini, Groq, and provider abstraction |
 | **[Database](docs/database.md)** | PostgreSQL schema and migrations |
 | **[Configuration](docs/configuration.md)** | Environment variables reference |
