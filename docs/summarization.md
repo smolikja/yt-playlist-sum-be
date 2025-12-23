@@ -82,12 +82,14 @@ The logic is controlled by constants in `SummarizationService`:
 
 ## Prompt Engineering
 
+All system prompts are centralized in `app/core/prompts.py` within the `SummarizationPrompts` class. This separation allows for easier versioning and iteration without modifying the core logic.
+
 The service uses distinct system prompts for each context:
 
-*   **Single Video:** "You are an expert content summarizer... Analyze this video transcript..."
-*   **Direct Batch:** "You are analyzing a playlist... provided with full transcripts... structure with Cross-Video Connections..."
-*   **Map Phase (Chunk):** "Analyze a segment of a larger playlist... highlight key points of each video..."
-*   **Reduce Phase:** "Synthesize multiple summaries into a cohesive global summary..."
+*   **Single Video (`SINGLE_VIDEO`):** Comprehensive analysis of a single transcript, extracting key topics, insights, and takeaways. Enforces English output.
+*   **Direct Batch (`DIRECT_BATCH`):** Analyzes the entire playlist at once. Specifically instructed to find "Cross-Video Connections" and "Key Themes" across the collection.
+*   **Map Phase (`MAP_PHASE`):** Used for chunks of videos in the Map-Reduce strategy. Focuses on consolidating key points from a segment of the playlist.
+*   **Reduce Phase (`REDUCE_PHASE`):** Synthesizes multiple summaries (from the Map phase) into a cohesive global summary, identifying overarching themes.
 
 ## Future Improvements
 
