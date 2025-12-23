@@ -18,10 +18,10 @@ See [Authentication](./authentication.md) for details on obtaining tokens.
 
 | Limit | Value | Description |
 |-------|-------|-------------|
-| `CONVERSATIONS_MAX_LIMIT` | 100 | Max conversations per request |
-| `MAX_MESSAGE_LENGTH` | 10,000 | Max characters per message |
-| Summarize rate | 10/minute | Rate limit for `/summarize` |
-| Chat rate | 30/minute | Rate limit for `/chat` |
+| `PaginationConfig.MAX_LIMIT` | 100 | Max conversations per request |
+| `MessageConfig.MAX_LENGTH` | 10,000 | Max characters per message |
+| `RateLimitConfig.SUMMARIZE` | 10/minute | Rate limit for `/summarize` |
+| `RateLimitConfig.CHAT` | 30/minute | Rate limit for `/chat` |
 
 Constants are defined in `app/core/constants.py`.
 
