@@ -16,6 +16,7 @@ from loguru import logger
 
 from app.models import Playlist, Video, LLMRole
 from app.core.providers.llm_provider import LLMProvider, LLMMessage
+from app.core.prompts import SummarizationPrompts
 
 
 class SummarizationService:
@@ -109,18 +110,7 @@ class SummarizationService:
         messages = [
             LLMMessage(
                 role=LLMRole.SYSTEM,
-                content=(
-                    "You are an expert content summarizer analyzing a playlist of videos. "
-                    "You have been provided with the full transcripts of all videos in this collection. "
-                    "Your task is to create a comprehensive global summary.\n\n"
-                    "Structure your response with:\n"
-                    "1. Executive Summary: High-level overview of the entire playlist.\n"
-                    "2. Key Themes & Topics: Major recurring subjects discussed across videos.\n"
-                    "3. Detailed Insights: Deep dive into the most important information.\n"
-                    "4. Cross-Video Connections: How concepts in different videos relate to each other.\n"
-                    "5. Conclusion.\n\n"
-                    "Output in ENGLISH using markdown formatting."
-                ),
+                content=SummarizationPrompts.DIRECT_BATCH,
             ),
             LLMMessage(
                 role=LLMRole.USER,
@@ -216,14 +206,7 @@ class SummarizationService:
         messages = [
             LLMMessage(
                 role=LLMRole.SYSTEM,
-                content=(
-                    "You are an expert content summarizer analyzing a segment of a larger playlist. "
-                    "Analyze the provided transcripts for this group of videos. "
-                    "Provide a consolidated summary that highlights the key points of each video "
-                    "and identifies any immediate connections between them. "
-                    "Structure the output clearly using markdown. "
-                    "Keep the summary concise but informative."
-                ),
+                content=SummarizationPrompts.MAP_PHASE,
             ),
             LLMMessage(
                 role=LLMRole.USER,
@@ -251,17 +234,35 @@ class SummarizationService:
         messages = [
             LLMMessage(
                 role=LLMRole.SYSTEM,
-                content=(
-                    "You are an expert content summarizer. "
-                    "Analyze this video transcript and provide a comprehensive summary. "
-                    "Structure your response with:\n"
-                    "1. Executive Summary (2-3 sentences)\n"
-                    "2. Key Topics Covered\n"
-                    "3. Main Points and Insights\n"
-                    "4. Conclusions or Takeaways\n\n"
-                    "The transcript may be in any language, but output in ENGLISH. "
-                    "Use markdown formatting with headers and bullet points."
-                ),
+                content=SummarizationPrompts.SINGLE_VIDEO,
+            ),
+            LLMMessage(
+                role=LLMRole.USER,
+                content=f"Video Title: {video.title or 'Untitled'}\n\nTranscript:\n{transcript_text}",
+            ),
+        ]
+        
+        response = await self.llm_provider.generate_text(
+            messages=messages,
+            temperature=0.3,
+        )
+        
+        return response.content
+    
+    async def _summarize_video(self, video: Video) -> str:
+        """
+        Summarize a single video transcript (for Map phase of Map-Reduce).
+        """
+        transcript_text = video.full_text
+        
+        if len(transcript_text) > self.MAX_SINGLE_VIDEO_CHARS:
+            logger.warning(f"Truncating transcript for video {video.id}")
+            transcript_text = transcript_text[:self.MAX_SINGLE_VIDEO_CHARS] + "..."
+        
+        messages = [
+            LLMMessage(
+                role=LLMRole.SYSTEM,
+                content=SummarizationPrompts.MAP_PHASE,
             ),
             LLMMessage(
                 role=LLMRole.USER,
@@ -292,21 +293,14 @@ class SummarizationService:
         messages = [
             LLMMessage(
                 role=LLMRole.SYSTEM,
-                content=(
-                    "You are synthesizing multiple summaries into a cohesive "
-                    "global summary of the entire playlist. "
-                    "Identify overarching themes, common topics, and key takeaways. "
-                    "Present the summary in well-structured English with clear sections. "
-                    "Use markdown formatting with headers and bullet points. "
-                    "Include an executive summary at the top."
-                ),
+                content=SummarizationPrompts.REDUCE_PHASE,
             ),
             LLMMessage(
                 role=LLMRole.USER,
                 content=(
                     f"Playlist: {playlist_title or 'Untitled Playlist'}\n"
-                    f"Number of Parts/Videos: {len(video_summaries)}\n\n"
-                    f"Summaries to Combine:\n\n{summaries_text}"
+                    f"Number of Videos: {len(video_summaries)}\n\n"
+                    f"Individual Video Summaries:\n\n{summaries_text}"
                 ),
             ),
         ]
