@@ -56,40 +56,40 @@ cp .env.example .env
 
 ## Application Constants
 
-Defined in `app/core/constants.py`:
+Defined in `app/core/constants.py`, constants are grouped by functional area:
 
-### Pagination
+### Pagination (`PaginationConfig`)
 | Constant | Value | Description |
 |----------|-------|-------------|
-| `CONVERSATIONS_DEFAULT_LIMIT` | 20 | Default conversations per page |
-| `CONVERSATIONS_MAX_LIMIT` | 100 | Max conversations per page |
+| `DEFAULT_LIMIT` | 20 | Default conversations per page |
+| `MAX_LIMIT` | 100 | Max conversations per page |
 
-### Messages
+### Messages (`MessageConfig`)
 | Constant | Value | Description |
 |----------|-------|-------------|
-| `MAX_MESSAGE_LENGTH` | 10,000 | Max chars per chat message |
-| `MAX_MESSAGES_PER_CONVERSATION` | 1,000 | Max messages in conversation |
-| `CHAT_HISTORY_CONTEXT_SIZE` | 5 | Messages sent to LLM |
+| `MAX_LENGTH` | 10,000 | Max chars per chat message |
+| `MAX_PER_CONVERSATION` | 1,000 | Max messages in conversation |
+| `HISTORY_CONTEXT_SIZE` | 5 | Messages sent to LLM |
 
-### Rate Limits
+### Rate Limits (`RateLimitConfig`)
 | Constant | Value | Description |
 |----------|-------|-------------|
-| `RATE_LIMIT_SUMMARIZE` | 10/minute | Summarize endpoint |
-| `RATE_LIMIT_CHAT` | 30/minute | Chat endpoint |
+| `SUMMARIZE` | 10/minute | Summarize endpoint |
+| `CHAT` | 30/minute | Chat endpoint |
 
-### RAG
+### RAG & Summarization (`RAGConfig` / `SummarizationConfig`)
 | Constant | Value | Description |
 |----------|-------|-------------|
-| `CHUNK_SIZE` | 1,000 | Chars per chunk |
-| `CHUNK_OVERLAP` | 200 | Overlap between chunks |
-| `RAG_TOP_K` | 5 | Chunks retrieved |
-| `EMBEDDING_BATCH_SIZE` | 32 | Batch size for embeddings |
+| `RAGConfig.CHUNK_SIZE` | 1,000 | Chars per chunk |
+| `RAGConfig.CHUNK_OVERLAP` | 200 | Overlap between chunks |
+| `RAGConfig.TOP_K` | 5 | Chunks retrieved |
+| `SummarizationConfig.MAX_SINGLE_VIDEO_CHARS` | 2M | Limit per video |
+| `SummarizationConfig.MAX_BATCH_CONTEXT_CHARS` | 3M | Batch limit |
 
-### YouTube
+### YouTube (`YouTubeConfig`)
 | Constant | Value | Description |
 |----------|-------|-------------|
-| `YOUTUBE_CONCURRENCY_LIMIT` | 5 | Parallel transcript fetches |
-| `MAX_TRANSCRIPT_CHARS` | 16,000 | Max chars per video |
+| `CONCURRENCY_LIMIT` | 5 | Parallel transcript fetches |
 
 ---
 
@@ -118,8 +118,8 @@ settings = Settings()
 
 ```python
 from app.core.config import settings
-from app.core.constants import MAX_MESSAGE_LENGTH
+from app.core.constants import MessageConfig
 
-print(settings.CHAT_LLM_PROVIDER)  # LLMProviderType.GEMINI
-print(MAX_MESSAGE_LENGTH)          # 10000
+print(settings.CHAT_LLM_PROVIDER)    # LLMProviderType.GEMINI
+print(MessageConfig.MAX_LENGTH)      # 10000
 ```

@@ -70,13 +70,13 @@ Used for massive datasets (e.g., playlists with hundreds of hours of content) th
 
 ## Configuration & Limits
 
-The logic is controlled by constants in `SummarizationService`:
+The logic is controlled by constants in the `SummarizationConfig` class within `app/core/constants.py`:
 
 | Constant | Value (Chars) | Approx. Tokens | Description |
 | :--- | :--- | :--- | :--- |
-| `MAX_SINGLE_VIDEO_CHARS` | 2,000,000 | ~500k | Hard limit for a single video transcript to prevent crashes. |
-| `MAX_BATCH_CONTEXT_CHARS` | 3,000,000 | ~750k | Threshold to switch from Direct Batch to Map-Reduce. Leaves buffer for output. |
-| `MAP_CHUNK_SIZE_CHARS` | 2,000,000 | ~500k | Target size for a single "chunk" in the Map phase. |
+| `SummarizationConfig.MAX_SINGLE_VIDEO_CHARS` | 2,000,000 | ~500k | Hard limit for a single video transcript to prevent crashes. |
+| `SummarizationConfig.MAX_BATCH_CONTEXT_CHARS` | 3,000,000 | ~750k | Threshold to switch from Direct Batch to Map-Reduce. Leaves buffer for output. |
+| `SummarizationConfig.MAP_CHUNK_SIZE_CHARS` | 2,000,000 | ~500k | Target size for a single "chunk" in the Map phase. |
 
 *Note: Token estimates assume ~4 characters per token.*
 
