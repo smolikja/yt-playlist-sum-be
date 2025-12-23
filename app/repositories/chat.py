@@ -1,6 +1,6 @@
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import selectinload
 from app.models.sql import ConversationModel, MessageModel
 import uuid
@@ -108,3 +108,31 @@ class ChatRepository:
         """
         await self.db.delete(conversation)
         await self.db.commit()
+
+    async def claim_anonymous_conversation(
+        self, conversation_id: str, user_id: uuid.UUID
+    ) -> bool:
+        """
+        Atomically claim an anonymous conversation for a user.
+        
+        Security: Uses atomic UPDATE with WHERE condition to prevent race conditions
+        where two users try to claim the same conversation simultaneously.
+        
+        Args:
+            conversation_id: The conversation ID to claim.
+            user_id: The user ID to assign ownership to.
+            
+        Returns:
+            True if the conversation was successfully claimed, False if already owned.
+        """
+        query = (
+            update(ConversationModel)
+            .where(
+                ConversationModel.id == conversation_id,
+                ConversationModel.user_id.is_(None)  # Only claim if anonymous
+            )
+            .values(user_id=user_id)
+        )
+        result = await self.db.execute(query)
+        await self.db.commit()
+        return result.rowcount > 0

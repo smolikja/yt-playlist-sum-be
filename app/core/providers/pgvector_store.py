@@ -33,6 +33,12 @@ class PgVectorStore(VectorStore):
     
     TABLE_NAME = "document_embeddings"
     
+    # Security: Whitelist of allowed metadata keys for filter queries
+    # Prevents SQL injection through key interpolation in JSONB filters
+    ALLOWED_METADATA_KEYS = frozenset({
+        "video_id", "video_title", "chunk_index", "start_time", "end_time"
+    })
+    
     def __init__(self, session: AsyncSession):
         """
         Initialize the pgvector store.
@@ -121,6 +127,9 @@ class PgVectorStore(VectorStore):
         
         if filter_metadata:
             for key, value in filter_metadata.items():
+                # Security: Validate key against whitelist before SQL interpolation
+                if key not in self.ALLOWED_METADATA_KEYS:
+                    raise ValueError(f"Invalid metadata filter key: {key}")
                 # Use ->> operator for JSONB text extraction
                 where_clauses.append(f"chunk_metadata->>'{key}' = :meta_{key}")
                 params[f"meta_{key}"] = str(value)

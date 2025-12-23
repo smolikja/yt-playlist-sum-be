@@ -360,18 +360,26 @@ class ChatService:
     async def claim_conversation(
         self, conversation_id: str, user_id: uuid.UUID
     ) -> None:
-        """Claim an anonymous conversation for a user."""
+        """
+        Claim an anonymous conversation for a user.
+        
+        Security: Uses atomic UPDATE operation to prevent race conditions.
+        """
+        # Check if conversation exists first
         conversation = await self.chat_repository.get_conversation(conversation_id)
         if not conversation:
             raise NotFoundError("Conversation", conversation_id)
 
-        if conversation.user_id is not None:
+        # Atomic claim operation - returns False if already owned
+        claimed = await self.chat_repository.claim_anonymous_conversation(
+            conversation_id, user_id
+        )
+        
+        if not claimed:
             raise ForbiddenError(
                 "Conversation is already claimed or owned by another user."
             )
 
-        conversation.user_id = user_id
-        await self.chat_repository.update_conversation(conversation)
         logger.info(f"Conversation {conversation_id} claimed by user {user_id}")
 
     async def get_history(
