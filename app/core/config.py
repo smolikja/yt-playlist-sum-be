@@ -43,6 +43,13 @@ class Settings(BaseSettings):
     # RAG Configuration
     EMBEDDING_MODEL: str = "intfloat/multilingual-e5-large"
 
+    # Summarization Limits (based on LLM context window)
+    # Formula: MAX_CHARS = CONTEXT_TOKENS * 4 * SAFETY_MARGIN
+    # Example for Gemini (1M tokens): 1_000_000 * 4 * 0.5 = 2_000_000 chars
+    SUMMARIZATION_MAX_INPUT_CHARS: int = 2_000_000    # Max chars for single video input
+    SUMMARIZATION_BATCH_THRESHOLD: int = 3_000_000   # Threshold: batch vs map-reduce
+    SUMMARIZATION_CHUNK_SIZE: int = 2_000_000         # Chunk size for map-reduce
+
     model_config = SettingsConfigDict(env_file=".env")
 
 

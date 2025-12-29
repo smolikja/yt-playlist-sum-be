@@ -38,18 +38,6 @@ class YouTubeConfig:
     CONCURRENCY_LIMIT = 5  # Max parallel transcript fetches
 
 
-class SummarizationConfig:
-    """Configuration for Summarization strategies."""
-    # Approx. 500k tokens (assuming ~4 chars/token)
-    MAX_SINGLE_VIDEO_CHARS = 2_000_000 
-    
-    # Approx. 750k tokens - leaves buffer for response in a 1M context window
-    MAX_BATCH_CONTEXT_CHARS = 3_000_000 
-    
-    # Approx. 500k tokens - limit for one chunk in Map-Reduce phase
-    MAP_CHUNK_SIZE_CHARS = 2_000_000
-
-
 class ExtractiveSummaryConfig:
     """Configuration for extractive pre-summarization (zero LLM cost)."""
     SENTENCES_PER_VIDEO = 50       # Max sentences to extract per video

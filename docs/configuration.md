@@ -43,6 +43,28 @@ cp .env.example .env
 - `all-mpnet-base-v2` - Higher quality, English-only (109M params)
 - `paraphrase-multilingual-MiniLM-L12-v2` - Multilingual, faster (118M params)
 
+### Summarization Limits
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SUMMARIZATION_MAX_INPUT_CHARS` | `2000000` | Max chars for single video input |
+| `SUMMARIZATION_BATCH_THRESHOLD` | `3000000` | Threshold: batch vs map-reduce |
+| `SUMMARIZATION_CHUNK_SIZE` | `2000000` | Chunk size for map-reduce |
+
+**Calculation formula:**
+
+```
+MAX_CHARS = CONTEXT_TOKENS × 4 × SAFETY_MARGIN
+```
+
+| Model | Context | Recommended MAX_INPUT |
+|-------|---------|---------------------|
+| Gemini 2.5 Flash | 1M tokens | 2,000,000 chars |
+| Llama 3.3 70B | 128k tokens | 256,000 chars |
+| GPT-4 Turbo | 128k tokens | 256,000 chars |
+
+> **Note:** Use 0.5 safety margin to leave room for prompt + response tokens.
+
 ### Proxy Configuration
 
 | Variable | Default | Description |

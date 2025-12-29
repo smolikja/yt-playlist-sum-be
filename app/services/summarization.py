@@ -21,7 +21,8 @@ from loguru import logger
 from app.models import Playlist, Video, LLMRole
 from app.core.providers.llm_provider import LLMProvider, LLMMessage
 from app.core.prompts import SummarizationPrompts
-from app.core.constants import SummarizationConfig, ExtractiveSummaryConfig
+from app.core.constants import ExtractiveSummaryConfig
+from app.core.config import settings
 
 if TYPE_CHECKING:
     from app.services.extractive import ExtractiveSummarizer
@@ -87,7 +88,7 @@ class SummarizationService:
             return await self._summarize_single_video(valid_videos[0])
 
         # Strategy 2: Direct Batch Processing (Optimized for Large Context)
-        if total_chars < SummarizationConfig.MAX_BATCH_CONTEXT_CHARS:
+        if total_chars < settings.SUMMARIZATION_BATCH_THRESHOLD:
             logger.info("Using Direct Batch strategy (fits in context window)")
             return await self._summarize_playlist_direct(playlist, valid_videos)
 
@@ -106,8 +107,8 @@ class SummarizationService:
             text = video.full_text
             
             # Individual video truncation safety
-            if len(text) > SummarizationConfig.MAX_SINGLE_VIDEO_CHARS:
-                text = text[:SummarizationConfig.MAX_SINGLE_VIDEO_CHARS] + "... (truncated)"
+            if len(text) > settings.SUMMARIZATION_MAX_INPUT_CHARS:
+                text = text[:settings.SUMMARIZATION_MAX_INPUT_CHARS] + "... (truncated)"
             
             context_parts.append(f"### Video: {title}\n{text}")
             
@@ -180,7 +181,7 @@ class SummarizationService:
             video_len = len(video.full_text)
             
             # If adding this video exceeds limit and current chunk is not empty, start new chunk
-            if current_chunk and (current_chunk_size + video_len > SummarizationConfig.MAP_CHUNK_SIZE_CHARS):
+            if current_chunk and (current_chunk_size + video_len > settings.SUMMARIZATION_CHUNK_SIZE):
                 chunks.append(current_chunk)
                 current_chunk = []
                 current_chunk_size = 0
@@ -203,8 +204,8 @@ class SummarizationService:
             title = video.title or "Untitled"
             text = video.full_text
             # Safety truncate individual videos just in case
-            if len(text) > SummarizationConfig.MAX_SINGLE_VIDEO_CHARS:
-                text = text[:SummarizationConfig.MAX_SINGLE_VIDEO_CHARS] + "... (truncated)"
+            if len(text) > settings.SUMMARIZATION_MAX_INPUT_CHARS:
+                text = text[:settings.SUMMARIZATION_MAX_INPUT_CHARS] + "... (truncated)"
             context_parts.append(f"### Video: {title}\n{text}")
             
         batch_context = "\n\n".join(context_parts)
@@ -233,9 +234,9 @@ class SummarizationService:
         """
         transcript_text = video.full_text
         
-        if len(transcript_text) > SummarizationConfig.MAX_SINGLE_VIDEO_CHARS:
+        if len(transcript_text) > settings.SUMMARIZATION_MAX_INPUT_CHARS:
             logger.warning(f"Truncating transcript for video {video.id}")
-            transcript_text = transcript_text[:SummarizationConfig.MAX_SINGLE_VIDEO_CHARS] + "..."
+            transcript_text = transcript_text[:settings.SUMMARIZATION_MAX_INPUT_CHARS] + "..."
         
         messages = [
             LLMMessage(
@@ -261,9 +262,9 @@ class SummarizationService:
         """
         transcript_text = video.full_text
         
-        if len(transcript_text) > SummarizationConfig.MAX_SINGLE_VIDEO_CHARS:
+        if len(transcript_text) > settings.SUMMARIZATION_MAX_INPUT_CHARS:
             logger.warning(f"Truncating transcript for video {video.id}")
-            transcript_text = transcript_text[:SummarizationConfig.MAX_SINGLE_VIDEO_CHARS] + "..."
+            transcript_text = transcript_text[:settings.SUMMARIZATION_MAX_INPUT_CHARS] + "..."
         
         messages = [
             LLMMessage(
