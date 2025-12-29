@@ -24,10 +24,13 @@ cp .env.example .env
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `GEMINI_MODEL_NAME` | (see .env.example) | Gemini model for chat |
-| `GROQ_MODEL_NAME` | (see .env.example) | Groq model for summarization |
-| `CHAT_LLM_PROVIDER` | `gemini` | Provider for chat (`gemini` or `groq`) |
-| `SUMMARY_LLM_PROVIDER` | `groq` | Provider for summarization |
+| `GEMINI_MODEL_NAME` | (see .env.example) | Gemini model for summarization and RAG chat |
+| `GROQ_MODEL_NAME` | (see .env.example) | Groq model for fast chat without RAG |
+
+> **Note:** LLM provider assignments are hardcoded:
+> - **Summarization** → Gemini (large context, high TPM)
+> - **Chat with RAG** → Gemini (quality for retrieval)
+> - **Chat without RAG** → Groq (fast inference)
 
 ### RAG Configuration
 

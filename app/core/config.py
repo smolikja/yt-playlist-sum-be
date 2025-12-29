@@ -6,7 +6,7 @@ from typing import List, Union
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from app.models.enums import LLMProviderType, EmbeddingProviderType, VectorStoreType
+from app.models.enums import EmbeddingProviderType, VectorStoreType
 
 
 class Settings(BaseSettings):
@@ -43,8 +43,6 @@ class Settings(BaseSettings):
     SECRET_KEY: str
 
     # RAG Configuration - using type-safe enums
-    CHAT_LLM_PROVIDER: LLMProviderType = LLMProviderType.GEMINI
-    SUMMARY_LLM_PROVIDER: LLMProviderType = LLMProviderType.GROQ
     EMBEDDING_PROVIDER: EmbeddingProviderType = EmbeddingProviderType.SENTENCE_TRANSFORMER
     EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
     VECTOR_STORE: VectorStoreType = VectorStoreType.PGVECTOR

@@ -26,12 +26,15 @@ classDiagram
     LLMProvider <|-- GroqProvider
 ```
 
-## Available Providers
+## Provider Assignments
 
-| Provider | Use Case | Speed | Notes |
-|----------|----------|-------|-------|
-| **Groq** | Summarization | Very fast | Best for batch processing |
-| **Gemini** | Chat | Fast | Best for interactive chat |
+LLM provider assignments are hardcoded for optimal performance:
+
+| Use Case | Provider | Reason |
+|----------|----------|--------|
+| **Summarization** | Gemini | Large context window (1M+), high TPM limits |
+| **Chat with RAG** | Gemini | Quality for complex retrieval context |
+| **Chat without RAG** | Groq | Fast inference, optimized for speed |
 
 ## Core Types
 
