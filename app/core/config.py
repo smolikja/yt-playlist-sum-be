@@ -6,8 +6,6 @@ from typing import List, Union
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from app.models.enums import EmbeddingProviderType, VectorStoreType
-
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
@@ -42,10 +40,8 @@ class Settings(BaseSettings):
     # Auth
     SECRET_KEY: str
 
-    # RAG Configuration - using type-safe enums
-    EMBEDDING_PROVIDER: EmbeddingProviderType = EmbeddingProviderType.SENTENCE_TRANSFORMER
-    EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
-    VECTOR_STORE: VectorStoreType = VectorStoreType.PGVECTOR
+    # RAG Configuration
+    EMBEDDING_MODEL: str = "intfloat/multilingual-e5-large"
 
     model_config = SettingsConfigDict(env_file=".env")
 

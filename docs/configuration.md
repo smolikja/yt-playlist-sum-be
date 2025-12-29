@@ -36,9 +36,12 @@ cp .env.example .env
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `EMBEDDING_PROVIDER` | `sentence_transformer` | Embedding backend |
-| `EMBEDDING_MODEL` | `all-MiniLM-L6-v2` | Model for embeddings |
-| `VECTOR_STORE` | `pgvector` | Vector database backend |
+| `EMBEDDING_MODEL` | `intfloat/multilingual-e5-large` | SentenceTransformer model for embeddings |
+
+**Alternative embedding models:**
+- `all-MiniLM-L6-v2` - Fast, English-only (22M params)
+- `all-mpnet-base-v2` - Higher quality, English-only (109M params)
+- `paraphrase-multilingual-MiniLM-L12-v2` - Multilingual, faster (118M params)
 
 ### Proxy Configuration
 

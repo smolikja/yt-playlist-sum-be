@@ -25,9 +25,6 @@ from app.core.providers.llm_provider import LLMProvider
 from app.core.providers.embedding_provider import EmbeddingProvider
 from app.core.providers.vector_store import VectorStore
 
-# Provider type enums
-from app.models.enums import EmbeddingProviderType
-
 # Concrete providers
 from app.core.providers.gemini_provider import GeminiProvider
 from app.core.providers.groq_provider import GroqProvider
@@ -97,16 +94,12 @@ def get_embedding_provider() -> EmbeddingProvider:
     """
     Get embedding provider for vector operations.
     
-    Default: SentenceTransformer (configured in settings.EMBEDDING_PROVIDER)
+    Uses SentenceTransformer with model from settings.EMBEDDING_MODEL.
+    Default: all-MiniLM-L6-v2 (fast, good quality)
     """
-    provider_type = settings.EMBEDDING_PROVIDER
-    
-    if provider_type == EmbeddingProviderType.SENTENCE_TRANSFORMER:
-        return SentenceTransformerEmbedding(
-            model_name=settings.EMBEDDING_MODEL,
-        )
-    else:
-        raise ValueError(f"Unknown embedding provider: {provider_type}")
+    return SentenceTransformerEmbedding(
+        model_name=settings.EMBEDDING_MODEL,
+    )
 
 
 def get_vector_store(
