@@ -10,12 +10,16 @@ The service analyzes the input playlist and selects one of three execution paths
 
 ```mermaid
 flowchart TD
-    Start([Playlist Request]) --> Count{Video Count}
+    Start([Playlist Request]) --> CalcSize[Calculate Total Characters]
+    
+    CalcSize --> CheckExtract{Size > 100k chars?}
+    
+    CheckExtract -- Yes --> Extract[Extractive Pre-Processing]
+    CheckExtract -- No --> Count
+    Extract --> Count{Video Count}
     
     Count -- "Single Video" --> Single[Strategy: Single Video]
-    Count -- "Multiple Videos" --> CalcSize[Calculate Total Characters]
-    
-    CalcSize --> CheckLimit{Fits in Context?}
+    Count -- "Multiple Videos" --> CheckLimit{Fits in Context?}
     
     CheckLimit -- "Yes (< 3M chars)" --> Direct[Strategy: Direct Batch]
     CheckLimit -- "No (> 3M chars)" --> MapReduce[Strategy: Chunked Map-Reduce]
@@ -46,10 +50,12 @@ flowchart TD
 *   **Prompting:** Uses a highly detailed prompt specifically designed to extract deep insights, timestamps (implicitly), and key takeaways from a single source.
 *   **Truncation:** Safety limit of ~2M characters (approx. 500k tokens).
 
+> **Note:** For long transcripts (> 100k chars), [Extractive Pre-Processing](extractive-summarization.md) is applied first to reduce content to ~15% before LLM processing.
+
 ### 2. Direct Batch Strategy (Preferred)
 **Trigger:** Multiple videos, total length < `MAX_BATCH_CONTEXT_CHARS` (approx. 750k tokens / 3M chars).
 
-This is the **most efficient method** for modern large-context models (like Gemini 1.5 Pro).
+This is the **most efficient method** for modern large-context models.
 
 *   **Logic (Context Stuffing):** Concatenates transcripts from *all* videos into a single, massive context window.
 *   **Benefits:**
@@ -95,3 +101,9 @@ The service uses distinct system prompts for each context:
 
 *   **Parallel Execution:** The Map phase currently runs sequentially (or semi-sequentially via loop) to respect strict Rate Limits. With higher tier API quotas, this can be parallelized using `asyncio.gather`.
 *   **Smart Chunking:** Currently chunks are based on character count. Future versions could chunk based on semantic similarity or topic clustering.
+
+## See Also
+
+- [Extractive Summarization](extractive-summarization.md) - Zero-LLM pre-processing for long transcripts
+- [Optimization Strategies](optimization-strategies.md) - Full optimization approach
+- [LLM Providers](llm-providers.md) - Provider abstraction layer

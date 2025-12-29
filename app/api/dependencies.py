@@ -25,9 +25,6 @@ from app.core.providers.llm_provider import LLMProvider
 from app.core.providers.embedding_provider import EmbeddingProvider
 from app.core.providers.vector_store import VectorStore
 
-# Provider type enums
-from app.models.enums import LLMProviderType, EmbeddingProviderType
-
 # Concrete providers
 from app.core.providers.gemini_provider import GeminiProvider
 from app.core.providers.groq_provider import GroqProvider
@@ -40,6 +37,7 @@ from app.services.ingestion import IngestionService
 from app.services.summarization import SummarizationService
 from app.services.retrieval import RetrievalService
 from app.services.chat import ChatService
+from app.services.extractive import ExtractiveSummarizer
 
 
 # =============================================================================
@@ -47,49 +45,48 @@ from app.services.chat import ChatService
 # =============================================================================
 
 @lru_cache
-def get_chat_llm_provider() -> LLMProvider:
+def get_gemini_provider() -> LLMProvider:
     """
-    Get LLM provider for chat operations.
+    Get Gemini LLM provider.
     
-    Default: Gemini (configured in settings.CHAT_LLM_PROVIDER)
+    Used for:
+    - Summarization (large context window, high TPM)
+    - RAG-enhanced chat (quality for complex retrieval)
     """
-    provider_type = settings.CHAT_LLM_PROVIDER
-    
-    if provider_type == LLMProviderType.GEMINI:
-        return GeminiProvider(
-            api_key=settings.GEMINI_API_KEY,
-            model_name=settings.GEMINI_MODEL_NAME,
-        )
-    elif provider_type == LLMProviderType.GROQ:
-        return GroqProvider(
-            api_key=settings.GROQ_API_KEY,
-            model_name=settings.GROQ_MODEL_NAME,
-        )
-    else:
-        raise ValueError(f"Unknown LLM provider: {provider_type}")
+    return GeminiProvider(
+        api_key=settings.GEMINI_API_KEY,
+        model_name=settings.GEMINI_MODEL_NAME,
+    )
 
 
 @lru_cache
+def get_groq_provider() -> LLMProvider:
+    """
+    Get Groq LLM provider.
+    
+    Used for:
+    - Fast chat without RAG (optimized for speed)
+    """
+    return GroqProvider(
+        api_key=settings.GROQ_API_KEY,
+        model_name=settings.GROQ_MODEL_NAME,
+    )
+
+
+# Aliases for specific use cases (for clarity in dependency injection)
 def get_summary_llm_provider() -> LLMProvider:
-    """
-    Get LLM provider for summarization operations.
-    
-    Default: Groq/Llama (configured in settings.SUMMARY_LLM_PROVIDER)
-    """
-    provider_type = settings.SUMMARY_LLM_PROVIDER
-    
-    if provider_type == LLMProviderType.GROQ:
-        return GroqProvider(
-            api_key=settings.GROQ_API_KEY,
-            model_name=settings.GROQ_MODEL_NAME,
-        )
-    elif provider_type == LLMProviderType.GEMINI:
-        return GeminiProvider(
-            api_key=settings.GEMINI_API_KEY,
-            model_name=settings.GEMINI_MODEL_NAME,
-        )
-    else:
-        raise ValueError(f"Unknown LLM provider: {provider_type}")
+    """Get LLM provider for summarization (Gemini - large context, high TPM)."""
+    return get_gemini_provider()
+
+
+def get_rag_chat_llm_provider() -> LLMProvider:
+    """Get LLM provider for RAG-enhanced chat (Gemini - quality for retrieval)."""
+    return get_gemini_provider()
+
+
+def get_fast_chat_llm_provider() -> LLMProvider:
+    """Get LLM provider for fast chat without RAG (Groq - speed optimized)."""
+    return get_groq_provider()
 
 
 @lru_cache
@@ -97,16 +94,12 @@ def get_embedding_provider() -> EmbeddingProvider:
     """
     Get embedding provider for vector operations.
     
-    Default: SentenceTransformer (configured in settings.EMBEDDING_PROVIDER)
+    Uses SentenceTransformer with model from settings.EMBEDDING_MODEL.
+    Default: all-MiniLM-L6-v2 (fast, good quality)
     """
-    provider_type = settings.EMBEDDING_PROVIDER
-    
-    if provider_type == EmbeddingProviderType.SENTENCE_TRANSFORMER:
-        return SentenceTransformerEmbedding(
-            model_name=settings.EMBEDDING_MODEL,
-        )
-    else:
-        raise ValueError(f"Unknown embedding provider: {provider_type}")
+    return SentenceTransformerEmbedding(
+        model_name=settings.EMBEDDING_MODEL,
+    )
 
 
 def get_vector_store(
@@ -175,7 +168,7 @@ def get_llm_service() -> LLMService:
 # NEW RAG SERVICE FACTORIES
 # =============================================================================
 
-from app.core.constants import RAGConfig
+from app.core.constants import RAGConfig, ExtractiveSummaryConfig
 
 # ... (rest of imports)
 
@@ -202,19 +195,36 @@ def get_ingestion_service(
     )
 
 
+@lru_cache
+def get_extractive_summarizer() -> ExtractiveSummarizer:
+    """
+    Get extractive summarizer for pre-processing transcripts.
+    
+    Uses TextRank algorithm with multi-language tokenizer support.
+    """
+    return ExtractiveSummarizer(
+        sentences_per_video=ExtractiveSummaryConfig.SENTENCES_PER_VIDEO,
+        fallback_sentence_count=ExtractiveSummaryConfig.FALLBACK_SENTENCE_COUNT,
+    )
+
+
 def get_summarization_service(
     llm_provider: LLMProvider = Depends(get_summary_llm_provider),
+    extractive_summarizer: ExtractiveSummarizer = Depends(get_extractive_summarizer),
 ) -> SummarizationService:
-    """Get summarization service for Map-Reduce summary."""
-    return SummarizationService(llm_provider=llm_provider)
+    """Get summarization service for Map-Reduce summary with extractive pre-processing."""
+    return SummarizationService(
+        llm_provider=llm_provider,
+        extractive_summarizer=extractive_summarizer,
+    )
 
 
 def get_retrieval_service(
-    llm_provider: LLMProvider = Depends(get_chat_llm_provider),
+    llm_provider: LLMProvider = Depends(get_rag_chat_llm_provider),
     embedding_provider: EmbeddingProvider = Depends(get_embedding_provider),
     vector_store: VectorStore = Depends(get_vector_store),
 ) -> RetrievalService:
-    """Get retrieval service for RAG context search."""
+    """Get retrieval service for RAG context search (uses Gemini)."""
     return RetrievalService(
         llm_provider=llm_provider,
         embedding_provider=embedding_provider,
@@ -227,7 +237,8 @@ def get_chat_service(
     summarization_service: SummarizationService = Depends(get_summarization_service),
     ingestion_service: IngestionService = Depends(get_ingestion_service),
     retrieval_service: RetrievalService = Depends(get_retrieval_service),
-    chat_llm_provider: LLMProvider = Depends(get_chat_llm_provider),
+    rag_llm_provider: LLMProvider = Depends(get_rag_chat_llm_provider),
+    fast_llm_provider: LLMProvider = Depends(get_fast_chat_llm_provider),
     chat_repository: ChatRepository = Depends(get_chat_repository),
 ) -> ChatService:
     """
@@ -235,16 +246,18 @@ def get_chat_service(
     
     Wires together:
     - YouTubeService for playlist extraction
-    - SummarizationService for Map-Reduce summarization
+    - SummarizationService for Map-Reduce summarization (Gemini)
     - IngestionService for vector indexing
-    - RetrievalService for RAG context retrieval
-    - LLMProvider for chat generation
+    - RetrievalService for RAG context retrieval (Gemini)
+    - RAG LLM Provider for context-aware chat (Gemini)
+    - Fast LLM Provider for quick chat without RAG (Groq)
     """
     return ChatService(
         youtube_service=youtube_service,
         summarization_service=summarization_service,
         ingestion_service=ingestion_service,
         retrieval_service=retrieval_service,
-        chat_llm_provider=chat_llm_provider,
+        rag_llm_provider=rag_llm_provider,
+        fast_llm_provider=fast_llm_provider,
         chat_repository=chat_repository,
     )

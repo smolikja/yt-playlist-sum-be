@@ -21,18 +21,18 @@ class GroqProvider(LLMProvider):
     Example:
         provider = GroqProvider(
             api_key="your-api-key",
-            model_name="llama-4-scout-17b",
+            model_name="your-model-name",
         )
         response = await provider.generate_text(messages)
     """
     
-    def __init__(self, api_key: str, model_name: str = "llama-4-scout-17b"):
+    def __init__(self, api_key: str, model_name: str):
         """
         Initialize the Groq provider.
         
         Args:
             api_key: Groq API key.
-            model_name: Model to use (e.g., "llama-4-scout-17b").
+            model_name: Model to use (configured via settings).
         """
         self.client = AsyncGroq(api_key=api_key)
         self.model_name = model_name

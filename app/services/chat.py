@@ -41,7 +41,8 @@ class ChatService:
         summarization_service: SummarizationService,
         ingestion_service: IngestionService,
         retrieval_service: RetrievalService,
-        chat_llm_provider: LLMProvider,
+        rag_llm_provider: LLMProvider,
+        fast_llm_provider: LLMProvider,
         chat_repository: ChatRepository,
     ):
         """
@@ -49,17 +50,19 @@ class ChatService:
 
         Args:
             youtube_service: Service for YouTube operations.
-            summarization_service: Service for Map-Reduce summarization.
+            summarization_service: Service for Map-Reduce summarization (Gemini).
             ingestion_service: Service for vector indexing.
             retrieval_service: Service for RAG retrieval.
-            chat_llm_provider: LLM provider for chat responses.
+            rag_llm_provider: LLM provider for RAG-enhanced chat (Gemini).
+            fast_llm_provider: LLM provider for fast chat without RAG (Groq).
             chat_repository: Repository for chat data access.
         """
         self.youtube_service = youtube_service
         self.summarization_service = summarization_service
         self.ingestion_service = ingestion_service
         self.retrieval_service = retrieval_service
-        self.chat_llm_provider = chat_llm_provider
+        self.rag_llm_provider = rag_llm_provider
+        self.fast_llm_provider = fast_llm_provider
         self.chat_repository = chat_repository
 
     async def create_session(
@@ -271,9 +274,14 @@ class ChatService:
 
         messages.append(LLMMessage(role=LLMRole.USER, content=user_message))
 
-        # 5. Generate response
-        logger.debug(f"Calling LLM for conversation {conversation_id}")
-        response = await self.chat_llm_provider.generate_text(
+        # 5. Generate response - select provider based on use_rag
+        #    RAG enabled: use Gemini (quality for retrieval context)
+        #    RAG disabled: use Groq (fast inference)
+        provider = self.rag_llm_provider if use_rag else self.fast_llm_provider
+        provider_name = "Gemini (RAG)" if use_rag else "Groq (fast)"
+        logger.debug(f"Calling {provider_name} for conversation {conversation_id}")
+        
+        response = await provider.generate_text(
             messages=messages,
             temperature=0.7,
         )

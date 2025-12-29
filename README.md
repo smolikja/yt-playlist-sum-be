@@ -5,6 +5,7 @@ A FastAPI-based backend for summarizing YouTube playlists using AI. Features RAG
 ## Features
 
 - **Playlist Summarization** - Extract and summarize YouTube playlist transcripts
+- **Extractive Pre-Processing** - TextRank-based compression (85% reduction) for long content
 - **RAG-Enhanced Chat** - Context-aware conversations with vector similarity search
 - **Multi-Provider LLMs** - Support for Gemini and Groq with model-agnostic architecture
 - **Transcript Caching** - PostgreSQL-backed caching to minimize API calls
@@ -38,6 +39,7 @@ API available at http://localhost:8000
 |----------|-------------|
 | **[Architecture](docs/architecture.md)** | System overview, request flows, design principles |
 | **[Summarization](docs/summarization.md)** | Adaptive strategy (Direct, Map-Reduce), prompts, and limits |
+| **[Extractive Summarization](docs/extractive-summarization.md)** | TextRank pre-processing for long transcripts |
 | **[API Reference](docs/api-reference.md)** | Complete endpoint documentation |
 | **[RAG Pipeline](docs/rag-pipeline.md)** | Vector indexing and retrieval system |
 | **[Authentication](docs/authentication.md)** | JWT auth with FastAPI Users |
