@@ -48,3 +48,13 @@ class SummarizationConfig:
     
     # Approx. 500k tokens - limit for one chunk in Map-Reduce phase
     MAP_CHUNK_SIZE_CHARS = 2_000_000
+
+
+class ExtractiveSummaryConfig:
+    """Configuration for extractive pre-summarization (zero LLM cost)."""
+    SENTENCES_PER_VIDEO = 50       # Max sentences to extract per video
+    FALLBACK_SENTENCE_COUNT = 30   # When language tokenizer not supported
+    MIN_TEXT_LENGTH = 500          # Skip extraction for texts shorter than this
+    COMPRESSION_RATIO = 0.15       # Target 15% of original content
+    # Threshold: only apply extractive pre-processing for large content
+    ACTIVATION_THRESHOLD = 100_000  # chars (~25k tokens)

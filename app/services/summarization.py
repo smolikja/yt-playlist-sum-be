@@ -9,15 +9,22 @@ based on content length:
 2. Direct Strategy (Batch): Sends all transcripts in one prompt if they fit context window.
 3. Map-Reduce Strategy: Splits processing for massive collections. It processes chunks of 
    videos (batches) in parallel to optimize efficiency before combining them.
+
+Optional pre-processing:
+- Extractive summarization can be used to compress transcripts before LLM summarization,
+  reducing token usage by 70-80% while preserving key information.
 """
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from loguru import logger
 
 from app.models import Playlist, Video, LLMRole
 from app.core.providers.llm_provider import LLMProvider, LLMMessage
 from app.core.prompts import SummarizationPrompts
-from app.core.constants import SummarizationConfig
+from app.core.constants import SummarizationConfig, ExtractiveSummaryConfig
+
+if TYPE_CHECKING:
+    from app.services.extractive import ExtractiveSummarizer
 
 
 class SummarizationService:
@@ -32,14 +39,20 @@ class SummarizationService:
       (batches) that fit the context window, summarizes each chunk, then combines the results.
     """
 
-    def __init__(self, llm_provider: LLMProvider):
+    def __init__(
+        self,
+        llm_provider: LLMProvider,
+        extractive_summarizer: Optional["ExtractiveSummarizer"] = None,
+    ):
         """
         Initialize the summarization service.
         
         Args:
             llm_provider: LLM provider for text generation.
+            extractive_summarizer: Optional extractive summarizer for pre-processing.
         """
         self.llm_provider = llm_provider
+        self.extractive_summarizer = extractive_summarizer
     
     async def summarize_playlist(self, playlist: Playlist) -> str:
         """
@@ -58,14 +71,20 @@ class SummarizationService:
         
         video_count = len(valid_videos)
         
+        # Calculate total characters to decide strategy
+        total_chars = sum(len(v.full_text) for v in valid_videos)
+        logger.info(f"Total transcript volume: {total_chars} chars across {video_count} videos")
+        
+        # Pre-processing: Apply extractive compression if beneficial
+        if self._should_apply_extraction(total_chars):
+            valid_videos = self._apply_extractive_compression(valid_videos)
+            total_chars = sum(len(v.full_text) for v in valid_videos)
+            logger.info(f"After extraction: {total_chars} chars")
+        
         # Strategy 1: Single Video (Specialized Prompt)
         if video_count == 1:
             logger.info(f"Summarizing single video: {valid_videos[0].title or valid_videos[0].id}")
             return await self._summarize_single_video(valid_videos[0])
-
-        # Calculate total characters to decide strategy
-        total_chars = sum(len(v.full_text) for v in valid_videos)
-        logger.info(f"Total transcript volume: {total_chars} chars across {video_count} videos")
 
         # Strategy 2: Direct Batch Processing (Optimized for Large Context)
         if total_chars < SummarizationConfig.MAX_BATCH_CONTEXT_CHARS:
@@ -298,3 +317,42 @@ class SummarizationService:
         )
         
         return response.content
+    
+    # =========================================================================
+    # EXTRACTIVE PRE-PROCESSING
+    # =========================================================================
+    
+    def _should_apply_extraction(self, total_chars: int) -> bool:
+        """Check if extractive pre-processing should be applied."""
+        if self.extractive_summarizer is None:
+            return False
+        
+        return total_chars >= ExtractiveSummaryConfig.ACTIVATION_THRESHOLD
+    
+    def _apply_extractive_compression(
+        self, 
+        videos: list[Video],
+    ) -> list[Video]:
+        """
+        Apply extractive compression to video transcripts.
+        
+        Uses the ExtractiveSummarizer to reduce token volume while
+        preserving key information.
+        
+        Args:
+            videos: List of videos with transcripts.
+            
+        Returns:
+            List of videos with compressed transcripts.
+        """
+        if self.extractive_summarizer is None:
+            return videos
+        
+        logger.info(
+            f"Applying extractive compression (ratio={ExtractiveSummaryConfig.COMPRESSION_RATIO})"
+        )
+        
+        return self.extractive_summarizer.compress_transcripts(
+            videos=videos,
+            target_ratio=ExtractiveSummaryConfig.COMPRESSION_RATIO,
+        )

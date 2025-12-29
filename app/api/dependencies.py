@@ -40,6 +40,7 @@ from app.services.ingestion import IngestionService
 from app.services.summarization import SummarizationService
 from app.services.retrieval import RetrievalService
 from app.services.chat import ChatService
+from app.services.extractive import ExtractiveSummarizer
 
 
 # =============================================================================
@@ -175,7 +176,7 @@ def get_llm_service() -> LLMService:
 # NEW RAG SERVICE FACTORIES
 # =============================================================================
 
-from app.core.constants import RAGConfig
+from app.core.constants import RAGConfig, ExtractiveSummaryConfig
 
 # ... (rest of imports)
 
@@ -202,11 +203,28 @@ def get_ingestion_service(
     )
 
 
+@lru_cache
+def get_extractive_summarizer() -> ExtractiveSummarizer:
+    """
+    Get extractive summarizer for pre-processing transcripts.
+    
+    Uses TextRank algorithm with multi-language tokenizer support.
+    """
+    return ExtractiveSummarizer(
+        sentences_per_video=ExtractiveSummaryConfig.SENTENCES_PER_VIDEO,
+        fallback_sentence_count=ExtractiveSummaryConfig.FALLBACK_SENTENCE_COUNT,
+    )
+
+
 def get_summarization_service(
     llm_provider: LLMProvider = Depends(get_summary_llm_provider),
+    extractive_summarizer: ExtractiveSummarizer = Depends(get_extractive_summarizer),
 ) -> SummarizationService:
-    """Get summarization service for Map-Reduce summary."""
-    return SummarizationService(llm_provider=llm_provider)
+    """Get summarization service for Map-Reduce summary with extractive pre-processing."""
+    return SummarizationService(
+        llm_provider=llm_provider,
+        extractive_summarizer=extractive_summarizer,
+    )
 
 
 def get_retrieval_service(
