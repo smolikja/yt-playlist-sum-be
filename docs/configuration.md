@@ -86,6 +86,14 @@ Defined in `app/core/constants.py`, constants are grouped by functional area:
 | `SummarizationConfig.MAX_SINGLE_VIDEO_CHARS` | 2M | Limit per video |
 | `SummarizationConfig.MAX_BATCH_CONTEXT_CHARS` | 3M | Batch limit |
 
+### Extractive Pre-Processing (`ExtractiveSummaryConfig`)
+| Constant | Value | Description |
+|----------|-------|-------------|
+| `ACTIVATION_THRESHOLD` | 100,000 | Chars threshold to enable extraction |
+| `COMPRESSION_RATIO` | 0.15 | Target 15% of original content |
+| `SENTENCES_PER_VIDEO` | 50 | Max sentences to extract per video |
+| `FALLBACK_SENTENCE_COUNT` | 30 | Fallback for unsupported languages |
+
 ### YouTube (`YouTubeConfig`)
 | Constant | Value | Description |
 |----------|-------|-------------|
