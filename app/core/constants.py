@@ -43,6 +43,6 @@ class ExtractiveSummaryConfig:
     SENTENCES_PER_VIDEO = 50       # Max sentences to extract per video
     FALLBACK_SENTENCE_COUNT = 30   # When language tokenizer not supported
     MIN_TEXT_LENGTH = 500          # Skip extraction for texts shorter than this
-    COMPRESSION_RATIO = 0.15       # Target 15% of original content
+    COMPRESSION_RATIO = 0.30       # Target 30% of original content (higher = more accurate)
     # Threshold: only apply extractive pre-processing for large content
     ACTIVATION_THRESHOLD = 100_000  # chars (~25k tokens)
