@@ -47,7 +47,9 @@ class SentenceTransformerEmbedding(EmbeddingProvider):
         if model_name not in self._models:
             from sentence_transformers import SentenceTransformer
             logger.info(f"Loading SentenceTransformer model: {model_name}")
-            self._models[model_name] = SentenceTransformer(model_name)
+            # Force CPU to avoid MPS meta tensor issue with large models
+            # Some multilingual models fail with .to('mps') due to lazy loading
+            self._models[model_name] = SentenceTransformer(model_name, device='cpu')
         
         self._model = self._models[model_name]
         self._dimension = self._model.get_sentence_embedding_dimension()
