@@ -33,7 +33,7 @@ class SummarizationService:
     
     Strategies:
     - **Single Video**: Direct comprehensive summarization.
-    - **Direct (Batch)**: Optimized for modern large-context models (e.g., Gemini 1.5). 
+    - **Direct (Batch)**: Optimized for modern large-context models. 
       Sends all data in one request to minimize costs and maximize context awareness.
     - **Chunked Map-Reduce**: Fallback for massive datasets. Groups videos into chunks 
       (batches) that fit the context window, summarizes each chunk, then combines the results.

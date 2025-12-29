@@ -49,7 +49,7 @@ flowchart TD
 ### 2. Direct Batch Strategy (Preferred)
 **Trigger:** Multiple videos, total length < `MAX_BATCH_CONTEXT_CHARS` (approx. 750k tokens / 3M chars).
 
-This is the **most efficient method** for modern large-context models (like Gemini 1.5 Pro).
+This is the **most efficient method** for modern large-context models.
 
 *   **Logic (Context Stuffing):** Concatenates transcripts from *all* videos into a single, massive context window.
 *   **Benefits:**

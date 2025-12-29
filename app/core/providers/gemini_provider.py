@@ -22,18 +22,18 @@ class GeminiProvider(LLMProvider):
     Example:
         provider = GeminiProvider(
             api_key="your-api-key",
-            model_name="gemini-2.5-flash",
+            model_name="your-model-name",
         )
         response = await provider.generate_text(messages)
     """
     
-    def __init__(self, api_key: str, model_name: str = "gemini-2.5-flash"):
+    def __init__(self, api_key: str, model_name: str):
         """
         Initialize the Gemini provider.
         
         Args:
             api_key: Google AI API key.
-            model_name: Gemini model to use (e.g., "gemini-2.5-flash").
+            model_name: Gemini model to use (configured via settings).
         """
         genai.configure(api_key=api_key)
         self.model_name = model_name

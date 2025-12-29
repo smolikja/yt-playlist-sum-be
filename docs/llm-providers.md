@@ -28,10 +28,10 @@ classDiagram
 
 ## Available Providers
 
-| Provider | Use Case | Model | Speed | Notes |
-|----------|----------|-------|-------|-------|
-| **Groq** | Summarization | Llama 4 Scout | Very fast | Best for batch processing |
-| **Gemini** | Chat | Gemini 2.5 Flash | Fast | Best for interactive chat |
+| Provider | Use Case | Speed | Notes |
+|----------|----------|-------|-------|
+| **Groq** | Summarization | Very fast | Best for batch processing |
+| **Gemini** | Chat | Fast | Best for interactive chat |
 
 ## Core Types
 
@@ -81,7 +81,7 @@ from app.core.providers.llm_provider import LLMMessage
 from app.models.enums import LLMRole
 
 provider = GeminiProvider(
-    model_name="gemini-2.5-flash",
+    model_name="your-model-name",
     api_key="AIza..."
 )
 
@@ -100,7 +100,7 @@ Uses the Google Generative AI SDK.
 from app.core.providers import GeminiProvider
 
 provider = GeminiProvider(
-    model_name="gemini-2.5-flash",
+    model_name="your-model-name",
     api_key="AIza..."
 )
 ```
@@ -113,7 +113,7 @@ Uses the Groq SDK for fast Llama inference.
 from app.core.providers import GroqProvider
 
 provider = GroqProvider(
-    model_name="meta-llama/llama-4-scout-17b-16e-instruct",
+    model_name="your-model-name",
     api_key="gsk_..."
 )
 ```

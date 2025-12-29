@@ -41,7 +41,7 @@ class LLMProvider(ABC):
     - generate_stream: For streaming responses (optional, can raise NotImplementedError)
     
     Example:
-        provider = GeminiProvider(api_key="...", model_name="gemini-2.5-flash")
+        provider = GeminiProvider(api_key="...", model_name="your-model-name")
         response = await provider.generate_text([
             LLMMessage(role=LLMRole.SYSTEM, content="You are helpful."),
             LLMMessage(role=LLMRole.USER, content="Hello!"),

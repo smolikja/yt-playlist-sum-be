@@ -24,8 +24,8 @@ cp .env.example .env
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `GEMINI_MODEL_NAME` | `gemini-2.5-flash` | Gemini model for chat |
-| `GROQ_MODEL_NAME` | `meta-llama/llama-4-scout-17b-16e-instruct` | Groq model for summarization |
+| `GEMINI_MODEL_NAME` | (see .env.example) | Gemini model for chat |
+| `GROQ_MODEL_NAME` | (see .env.example) | Groq model for summarization |
 | `CHAT_LLM_PROVIDER` | `gemini` | Provider for chat (`gemini` or `groq`) |
 | `SUMMARY_LLM_PROVIDER` | `groq` | Provider for summarization |
 
