@@ -227,17 +227,29 @@ class ChatService:
 
     def _append_exclusion_section(self, summary: str, report: ExclusionReport) -> str:
         """Append exclusion section to summary markdown."""
-        section = "\n\n---\n\n## ⚠️ Vyloučená videa\n\n"
-        section += f"Do sumarizace nebylo zahrnuto **{report.excluded_count}** z {report.total_videos} videí:\n\n"
-        section += "| Video | Důvod |\n|-------|-------|\n"
+        lines = [
+            "",
+            "",
+            "---",
+            "",
+            "## ⚠️ Vyloučená videa",
+            "",
+            f"Do sumarizace nebylo zahrnuto **{report.excluded_count}** z {report.total_videos} videí:",
+            "",
+            "| Video | Důvod |",
+            "|:------|:------|",
+        ]
         
         for video in report.excluded_videos:
             title = video.title or video.id
             # Escape pipe characters in title
             title = title.replace("|", "\\|")
-            section += f"| {title} | {video.reason} |\n"
+            reason = video.reason.replace("|", "\\|")
+            lines.append(f"| {title} | {reason} |")
         
-        return summary + section
+        lines.append("")  # Trailing newline
+        
+        return summary + "\n".join(lines)
 
     async def process_message(
         self,
