@@ -65,7 +65,8 @@ class SummarizationService:
         Returns:
             The final summary as markdown text.
         """
-        valid_videos = [v for v in playlist.videos if v.transcript]
+        # Filter videos with usable content (transcript OR fallback description)
+        valid_videos = [v for v in playlist.videos if v.is_usable]
         
         if not valid_videos:
             return "No transcripts available for summarization."

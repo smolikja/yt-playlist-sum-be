@@ -261,3 +261,66 @@ def get_chat_service(
         fast_llm_provider=fast_llm_provider,
         chat_repository=chat_repository,
     )
+
+
+# =============================================================================
+# JOB SERVICE FACTORIES
+# =============================================================================
+
+from app.repositories.job import JobRepository
+from app.services.job_service import JobService
+
+
+def get_job_repository(
+    db: AsyncSession = Depends(get_db_session),
+) -> JobRepository:
+    """Get job repository for job persistence."""
+    return JobRepository(db)
+
+
+def get_job_service(
+    job_repository: JobRepository = Depends(get_job_repository),
+    chat_repository: ChatRepository = Depends(get_chat_repository),
+) -> JobService:
+    """Get job service for background job management."""
+    return JobService(
+        job_repository=job_repository,
+        chat_repository=chat_repository,
+    )
+
+
+# =============================================================================
+# STANDALONE FACTORIES (for background worker - no Depends)
+# =============================================================================
+
+def create_youtube_service(db: AsyncSession) -> YouTubeService:
+    """Create YouTube service with DB session (for background worker)."""
+    proxy = get_proxy_service()
+    video_repo = VideoRepository(db)
+    return YouTubeService(proxy_service=proxy, video_repository=video_repo)
+
+
+def create_summarization_service() -> SummarizationService:
+    """Create summarization service without FastAPI Depends (for background worker)."""
+    return SummarizationService(
+        llm_provider=get_summary_llm_provider(),
+        extractive_summarizer=get_extractive_summarizer(),
+    )
+
+
+async def create_ingestion_service(db: AsyncSession) -> IngestionService:
+    """Create ingestion service with DB session (for background worker)."""
+    return IngestionService(
+        chunker=get_chunker(),
+        embedding_provider=get_embedding_provider(),
+        vector_store=PgVectorStore(session=db),
+    )
+
+
+async def create_retrieval_service(db: AsyncSession) -> RetrievalService:
+    """Create retrieval service with DB session (for background worker)."""
+    return RetrievalService(
+        llm_provider=get_rag_chat_llm_provider(),
+        embedding_provider=get_embedding_provider(),
+        vector_store=PgVectorStore(session=db),
+    )

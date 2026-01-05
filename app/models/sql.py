@@ -106,3 +106,39 @@ class DocumentEmbedding(Base):
     created_at = Column(DateTime, default=func.now())
 
 
+class JobModel(Base):
+    """
+    SQLAlchemy ORM model representing a background summarization job.
+    
+    Jobs are created for authenticated users when summarizing large playlists.
+    Once completed, a job can be "claimed" which transforms it into a conversation.
+    
+    Attributes:
+        id (UUID): Unique identifier for the job.
+        user_id (UUID): Foreign key to the user who created the job.
+        playlist_url (str): The YouTube playlist URL to summarize.
+        status (str): Current job status (pending, running, completed, failed).
+        error_message (str): Error details if job failed.
+        result_conversation_id (str): FK to created conversation when completed.
+        created_at (datetime): When the job was created.
+        started_at (datetime): When processing started.
+        completed_at (datetime): When processing finished.
+        expires_at (datetime): When the job will be auto-deleted.
+    """
+    __tablename__ = "jobs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    playlist_url = Column(String, nullable=False)
+    status = Column(String(20), nullable=False, default="pending")
+    error_message = Column(Text, nullable=True)
+    result_conversation_id = Column(String, ForeignKey("conversations.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime, default=func.now())
+    started_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+    expires_at = Column(DateTime, nullable=False)
+
+    user = relationship("User", backref="jobs")
+    result_conversation = relationship("ConversationModel", foreign_keys=[result_conversation_id])
+
+

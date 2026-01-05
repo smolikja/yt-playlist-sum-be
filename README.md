@@ -5,6 +5,8 @@ A FastAPI-based backend for summarizing YouTube playlists using AI. Features RAG
 ## Features
 
 - **Playlist Summarization** - Extract and summarize YouTube playlist transcripts
+- **Exclusion Reporting** - Transparent reporting of videos that couldn't be processed
+- **Background Jobs** - Async processing for large playlists (authenticated users)
 - **Extractive Pre-Processing** - TextRank-based compression (85% reduction) for long content
 - **RAG-Enhanced Chat** - Context-aware conversations with vector similarity search
 - **Multi-Provider LLMs** - Support for Gemini and Groq with model-agnostic architecture
@@ -41,6 +43,7 @@ API available at http://localhost:8000
 | **[Summarization](docs/summarization.md)** | Adaptive strategy (Direct, Map-Reduce), prompts, and limits |
 | **[Extractive Summarization](docs/extractive-summarization.md)** | TextRank pre-processing for long transcripts |
 | **[API Reference](docs/api-reference.md)** | Complete endpoint documentation |
+| **[Frontend Integration](docs/frontend-integration.md)** | Background jobs integration guide for FE |
 | **[RAG Pipeline](docs/rag-pipeline.md)** | Vector indexing and retrieval system |
 | **[Authentication](docs/authentication.md)** | JWT auth with FastAPI Users |
 | **[YouTube Service](docs/youtube-service.md)** | Playlist extraction and transcript caching |
@@ -79,7 +82,12 @@ yt-playlist-sum-be/
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/v1/summarize` | Summarize a YouTube playlist |
+| POST | `/api/v1/summarize` | Summarize a YouTube playlist (sync/async) |
+| GET | `/api/v1/jobs` | List user's background jobs |
+| GET | `/api/v1/jobs/{id}` | Get job status |
+| POST | `/api/v1/jobs/{id}/claim` | Claim completed job → conversation |
+| POST | `/api/v1/jobs/{id}/retry` | Retry failed job |
+| DELETE | `/api/v1/jobs/{id}` | Cancel pending/failed job |
 | POST | `/api/v1/chat` | Chat within a conversation context |
 | GET | `/api/v1/conversations` | List user conversations |
 | GET | `/api/v1/conversations/{id}` | Get conversation details |

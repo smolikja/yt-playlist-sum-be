@@ -2,11 +2,13 @@
 Pydantic models for API request/response schemas.
 """
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 import uuid
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 from fastapi_users import schemas
+
+from app.models.enums import VideoStatus
 
 
 class PlaylistRequest(BaseModel):
@@ -36,10 +38,33 @@ class SummaryContent(BaseModel):
     model_config = ConfigDict(frozen=True)
 
 
+class ExcludedVideo(BaseModel):
+    """Video that was excluded from summarization."""
+
+    id: str
+    title: Optional[str] = None
+    reason: str  # Human-readable reason
+    status: VideoStatus
+
+    model_config = ConfigDict(frozen=True)
+
+
+class ExclusionReport(BaseModel):
+    """Report of videos excluded from summarization."""
+
+    total_videos: int
+    included_count: int
+    excluded_count: int
+    excluded_videos: List[ExcludedVideo] = Field(default_factory=list)
+
+    model_config = ConfigDict(frozen=True)
+
+
 class SummaryResult(SummaryContent):
     """Result model for playlist summarization including conversation ID."""
 
     conversation_id: str
+    exclusion_report: Optional[ExclusionReport] = None
 
     model_config = ConfigDict(frozen=True)
 
@@ -116,3 +141,44 @@ class UserUpdate(schemas.BaseUserUpdate):
     """Schema for updating users."""
 
     pass
+
+
+# =============================================================================
+# JOB MODELS
+# =============================================================================
+
+class JobResponse(BaseModel):
+    """Response model for job status."""
+
+    id: uuid.UUID
+    status: str
+    playlist_url: str
+    error_message: Optional[str] = None
+    created_at: datetime
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class JobClaimResponse(BaseModel):
+    """Response when claiming a completed job."""
+
+    conversation: ConversationDetailResponse
+
+    model_config = ConfigDict(frozen=True)
+
+
+class SummarizeResponse(BaseModel):
+    """
+    Union response for /summarize endpoint.
+    
+    For public users: mode="sync", summary is populated.
+    For authenticated users: mode="async", job is populated.
+    """
+
+    mode: str  # "sync" or "async"
+    job: Optional[JobResponse] = None
+    summary: Optional[SummaryResult] = None
+
+    model_config = ConfigDict(frozen=True)

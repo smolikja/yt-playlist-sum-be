@@ -27,7 +27,18 @@ async def lifespan(app: FastAPI):
     """Application lifespan context manager."""
     LoggerConfigurator.setup()
     logger.info("🚀 Application startup")
+    
+    # Start background job worker
+    from app.services.job_worker import get_job_worker
+    worker = get_job_worker()
+    await worker.start()
+    logger.info("🔄 Background job worker started")
+    
     yield
+    
+    # Stop background job worker
+    await worker.stop()
+    logger.info("🛑 Background job worker stopped")
     logger.info("🛑 Application shutdown")
 
 
