@@ -4,7 +4,7 @@ Base URL: `http://localhost:8000/api/v1`
 
 ## Authentication
 
-All endpoints except `/summarize` require JWT authentication.
+All endpoints except `/summarize` (public mode) require JWT authentication.
 
 ```http
 Authorization: Bearer <jwt_token>
@@ -22,8 +22,10 @@ See [Authentication](./authentication.md) for details on obtaining tokens.
 | `MessageConfig.MAX_LENGTH` | 10,000 | Max characters per message |
 | `RateLimitConfig.SUMMARIZE` | 10/minute | Rate limit for `/summarize` |
 | `RateLimitConfig.CHAT` | 30/minute | Rate limit for `/chat` |
+| `JOB_MAX_CONCURRENT_PER_USER` | 3 | Max active jobs per user |
+| `PUBLIC_SUMMARIZATION_TIMEOUT` | 100s | Timeout for public users |
 
-Constants are defined in `app/core/constants.py`.
+Constants are defined in `app/core/constants.py` and `app/core/config.py`.
 
 ---
 
@@ -31,7 +33,10 @@ Constants are defined in `app/core/constants.py`.
 
 ### POST /summarize
 
-Summarize a YouTube playlist or single video and create a conversation.
+Summarize a YouTube playlist or single video. **Dual-mode operation:**
+
+- **Public users**: Synchronous with timeout (default: 100s)
+- **Authenticated users**: Creates async background job
 
 **Rate Limit:** 10 requests/minute
 
@@ -42,23 +47,135 @@ Summarize a YouTube playlist or single video and create a conversation.
 }
 ```
 
-**Response:**
+**Response (Public - Sync):**
 ```json
 {
-  "conversation_id": "uuid",
-  "playlist_title": "My Playlist",
-  "video_count": 5,
-  "summary_markdown": "# Summary\n\n..."
+  "mode": "sync",
+  "summary": {
+    "conversation_id": "uuid",
+    "playlist_title": "My Playlist",
+    "video_count": 5,
+    "summary_markdown": "# Summary\n\n..."
+  }
 }
 ```
 
-**Notes:**
-- Anonymous users can summarize but cannot access conversation history
-- Accepts both playlist URLs and single video URLs
-- Transcripts are cached for future requests
-- RAG indexing happens automatically
+**Response (Authenticated - Async):**
+```json
+{
+  "mode": "async",
+  "job": {
+    "id": "uuid",
+    "status": "pending",
+    "playlist_url": "https://...",
+    "created_at": "2026-01-05T10:00:00Z"
+  }
+}
+```
+
+**Error (Public Timeout - 408):**
+```json
+{
+  "type": "https://problems.example.com/public-timeout",
+  "title": "Request Timeout",
+  "status": 408,
+  "detail": "Playlist je příliš komplexní pro nepřihlášené uživatele..."
+}
+```
 
 ---
+
+## Job Endpoints
+
+### GET /jobs
+
+List all background jobs for the authenticated user.
+
+**Authentication:** Required
+
+**Response:**
+```json
+[
+  {
+    "id": "uuid",
+    "status": "completed",
+    "playlist_url": "https://...",
+    "error_message": null,
+    "created_at": "2026-01-05T10:00:00Z",
+    "started_at": "2026-01-05T10:00:01Z",
+    "completed_at": "2026-01-05T10:02:30Z"
+  }
+]
+```
+
+**Job Status Values:**
+| Status | Description |
+|--------|-------------|
+| `pending` | Waiting to be processed |
+| `running` | Currently being processed |
+| `completed` | Success - ready to claim |
+| `failed` | Error occurred - can retry |
+
+---
+
+### GET /jobs/{id}
+
+Get status of a specific job (polling endpoint).
+
+**Authentication:** Required
+
+**Response:** Same as individual job object above.
+
+---
+
+### POST /jobs/{id}/claim
+
+Claim a completed job, transforming it into a conversation.
+
+**Authentication:** Required
+
+**Response:**
+```json
+{
+  "conversation": {
+    "id": "uuid",
+    "title": "Playlist Title",
+    "playlist_url": "https://...",
+    "summary": "Full markdown summary",
+    "created_at": "2026-01-05T10:00:00Z",
+    "updated_at": "2026-01-05T10:02:30Z",
+    "messages": []
+  }
+}
+```
+
+> **Note:** The job is deleted after claiming. The conversation becomes visible in the user's conversation list.
+
+---
+
+### POST /jobs/{id}/retry
+
+Retry a failed job by resetting it to pending status.
+
+**Authentication:** Required
+
+**Response:** Updated job object with `status: "pending"`.
+
+---
+
+### DELETE /jobs/{id}
+
+Cancel and delete a pending or failed job.
+
+**Authentication:** Required
+
+**Response:** `204 No Content`
+
+> **Note:** Running and completed jobs cannot be cancelled.
+
+---
+
+## Chat Endpoints
 
 ### POST /chat
 
@@ -91,6 +208,8 @@ Send a message within a conversation context.
 ```
 
 ---
+
+## Conversation Endpoints
 
 ### GET /conversations
 
@@ -198,6 +317,7 @@ All errors follow RFC 7807 format:
 | 401 | Unauthorized - Missing/invalid token |
 | 403 | Forbidden - Access denied |
 | 404 | Not Found - Resource doesn't exist |
+| 408 | Request Timeout - Public user timeout exceeded |
 | 422 | Validation Error - Schema mismatch |
-| 429 | Rate Limited - Too many requests |
+| 429 | Rate Limited / Too Many Jobs |
 | 500 | Internal Error - Server failure |

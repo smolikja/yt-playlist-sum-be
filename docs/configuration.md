@@ -80,6 +80,17 @@ MAX_CHARS = CONTEXT_TOKENS × 4 × SAFETY_MARGIN
 |----------|---------|-------------|
 | `BACKEND_CORS_ORIGINS` | `http://localhost:3000,http://localhost:8000` | Allowed origins |
 
+### Background Jobs
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PUBLIC_SUMMARIZATION_TIMEOUT_SECONDS` | `100` | Timeout for public (unauthenticated) users |
+| `JOB_MAX_CONCURRENT_PER_USER` | `3` | Maximum concurrent jobs per user |
+| `JOB_TIMEOUT_SECONDS` | `600` | Maximum job execution time (10 min) |
+| `JOB_EXPIRY_DAYS` | `3` | Days until unclaimed job is auto-deleted |
+
+> **Note:** Public users who exceed the timeout will receive a 408 error with a message to register for unlimited access.
+
 ---
 
 ## Application Constants

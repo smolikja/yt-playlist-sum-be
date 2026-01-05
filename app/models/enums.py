@@ -21,3 +21,11 @@ class LLMProviderType(str, Enum):
     """Supported LLM provider types for configuration."""
     GEMINI = "gemini"
     GROQ = "groq"
+
+
+class JobStatus(str, Enum):
+    """Status of a background summarization job."""
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"

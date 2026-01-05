@@ -50,6 +50,12 @@ class Settings(BaseSettings):
     SUMMARIZATION_BATCH_THRESHOLD: int = 3_000_000   # Threshold: batch vs map-reduce
     SUMMARIZATION_CHUNK_SIZE: int = 2_000_000         # Chunk size for map-reduce
 
+    # Background Jobs Configuration
+    PUBLIC_SUMMARIZATION_TIMEOUT_SECONDS: int = 100   # Timeout for public users
+    JOB_MAX_CONCURRENT_PER_USER: int = 3              # Max active jobs per user
+    JOB_TIMEOUT_SECONDS: int = 600                    # 10 minutes max per job
+    JOB_EXPIRY_DAYS: int = 3                          # Days until job auto-delete
+
     model_config = SettingsConfigDict(env_file=".env")
 
 

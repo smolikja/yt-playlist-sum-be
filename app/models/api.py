@@ -116,3 +116,44 @@ class UserUpdate(schemas.BaseUserUpdate):
     """Schema for updating users."""
 
     pass
+
+
+# =============================================================================
+# JOB MODELS
+# =============================================================================
+
+class JobResponse(BaseModel):
+    """Response model for job status."""
+
+    id: uuid.UUID
+    status: str
+    playlist_url: str
+    error_message: Optional[str] = None
+    created_at: datetime
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class JobClaimResponse(BaseModel):
+    """Response when claiming a completed job."""
+
+    conversation: ConversationDetailResponse
+
+    model_config = ConfigDict(frozen=True)
+
+
+class SummarizeResponse(BaseModel):
+    """
+    Union response for /summarize endpoint.
+    
+    For public users: mode="sync", summary is populated.
+    For authenticated users: mode="async", job is populated.
+    """
+
+    mode: str  # "sync" or "async"
+    job: Optional[JobResponse] = None
+    summary: Optional[SummaryResult] = None
+
+    model_config = ConfigDict(frozen=True)

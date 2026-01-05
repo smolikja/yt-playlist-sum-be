@@ -18,6 +18,8 @@ graph TB
     
     subgraph "Service Layer"
         CHAT[ChatService]
+        JOBS[JobService]
+        WORKER[JobWorker<br/>Background]
         YT[YouTubeService]
         SUM[SummarizationService]
         ING[IngestionService]
@@ -46,6 +48,10 @@ graph TB
     API --> AUTH
     API --> LIMIT
     API --> CHAT
+    API --> JOBS
+    
+    JOBS --> WORKER
+    WORKER --> CHAT
     
     CHAT --> YT
     CHAT --> SUM
@@ -64,15 +70,18 @@ graph TB
     LLM --> GEMINI
     VEC --> PG
     CHAT --> PG
+    JOBS --> PG
     YT --> CACHE
 ```
 
 ## Core Components
 
 | Component | Purpose | Key Files |
-|-----------|---------|-----------|
+|-----------|---------|-----------| 
 | **API Layer** | HTTP endpoints, auth, rate limiting | `app/api/endpoints.py`, `app/api/auth.py` |
 | **ChatService** | Orchestrates summarization and chat | `app/services/chat.py` |
+| **JobService** | Background job management | `app/services/job_service.py` |
+| **JobWorker** | Async job processor (polling loop) | `app/services/job_worker.py` |
 | **YouTubeService** | Playlist extraction, transcript caching | `app/services/youtube.py` |
 | **RAG Pipeline** | Vector indexing and retrieval | `app/services/ingestion.py`, `app/services/retrieval.py` |
 | **LLM Providers** | Model-agnostic AI abstraction | `app/core/providers/` |

@@ -95,6 +95,30 @@ class InternalServerError(AppException):
         )
 
 
+class TooManyRequestsError(AppException):
+    """Too many concurrent requests/jobs exception."""
+    
+    def __init__(self, detail: str = "Too many concurrent requests. Please try again later."):
+        super().__init__(
+            status_code=429,
+            error_type="https://problems.example.com/too-many-requests",
+            title="Too Many Requests",
+            detail=detail,
+        )
+
+
+class PublicTimeoutError(AppException):
+    """Timeout for public (unauthenticated) users."""
+    
+    def __init__(self, detail: str = "Playlist is too complex for public users. Please register for unlimited access."):
+        super().__init__(
+            status_code=408,
+            error_type="https://problems.example.com/public-timeout",
+            title="Request Timeout",
+            detail=detail,
+        )
+
+
 def create_error_response(
     request: Request,
     status_code: int,
