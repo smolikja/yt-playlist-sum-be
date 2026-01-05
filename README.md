@@ -5,6 +5,7 @@ A FastAPI-based backend for summarizing YouTube playlists using AI. Features RAG
 ## Features
 
 - **Playlist Summarization** - Extract and summarize YouTube playlist transcripts
+- **Exclusion Reporting** - Transparent reporting of videos that couldn't be processed
 - **Background Jobs** - Async processing for large playlists (authenticated users)
 - **Extractive Pre-Processing** - TextRank-based compression (85% reduction) for long content
 - **RAG-Enhanced Chat** - Context-aware conversations with vector similarity search

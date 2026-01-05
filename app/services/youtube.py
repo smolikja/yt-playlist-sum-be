@@ -12,6 +12,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 from app.services.proxy import ProxyService
 from app.models import Playlist, Video, TranscriptSegment, YtDlpResponse
 from app.models.sql import VideoModel
+from app.models.enums import VideoStatus
 from app.repositories.video import VideoRepository
 from app.core.constants import YouTubeConfig
 
@@ -196,13 +197,30 @@ class YouTubeService:
                 logger.warning(
                     f"No transcript found/disabled for video {video.id}. Falling back to description."
                 )
-                video.transcript_missing = True
+                # Check if description is usable
+                if video.description and len(video.description) > 50:
+                    video.status = VideoStatus.FALLBACK_DESCRIPTION
+                else:
+                    video.status = VideoStatus.NO_CONTENT
+                    video.status_detail = "No transcript available and description too short"
                 return video
             except Exception as e:
-                logger.warning(
-                    f"Error fetching transcript for {video.id} (retrying): {e}"
-                )
-                raise
+                error_msg = str(e)
+                # Classify error type
+                if "private" in error_msg.lower():
+                    video.status = VideoStatus.PRIVATE
+                    video.status_detail = "Video is private"
+                    return video
+                elif "blocked" in error_msg.lower() or "too many requests" in error_msg.lower():
+                    logger.warning(
+                        f"Error fetching transcript for {video.id} (retrying): {e}"
+                    )
+                    raise  # Retry
+                else:
+                    logger.warning(
+                        f"Error fetching transcript for {video.id} (retrying): {e}"
+                    )
+                    raise  # Retry
 
     async def fetch_transcripts(self, playlist: Playlist) -> Playlist:
         """
@@ -272,7 +290,11 @@ class YouTubeService:
                     logger.error(
                         f"Failed to fetch transcript for {missing_videos[i].id} after retries: {res}"
                     )
-                    final_fetched_videos.append(missing_videos[i])
+                    # Mark video with ERROR status
+                    failed_video = missing_videos[i]
+                    failed_video.status = VideoStatus.ERROR
+                    failed_video.status_detail = str(res)[:200]  # Truncate long errors
+                    final_fetched_videos.append(failed_video)
                 elif isinstance(res, Video):
                     final_fetched_videos.append(res)
                     try:
@@ -319,13 +341,11 @@ class YouTubeService:
 
         playlist.videos = combined_videos
 
-        success_count = sum(
-            1
-            for v in playlist.videos
-            if v.transcript or (v.transcript_missing and v.description)
-        )
+        # Count usable videos
+        usable_count = sum(1 for v in playlist.videos if v.is_usable)
+        excluded_count = len(playlist.videos) - usable_count
         logger.info(
-            f"Finished processing. Usable Content: {success_count}/{len(playlist.videos)}"
+            f"Finished processing. Usable: {usable_count}/{len(playlist.videos)} | Excluded: {excluded_count}"
         )
 
         return playlist

@@ -54,8 +54,21 @@ Summarize a YouTube playlist or single video. **Dual-mode operation:**
   "summary": {
     "conversation_id": "uuid",
     "playlist_title": "My Playlist",
-    "video_count": 5,
-    "summary_markdown": "# Summary\n\n..."
+    "video_count": 14,
+    "summary_markdown": "# Summary\n\n...\n\n## ⚠️ Vyloučená videa\n...",
+    "exclusion_report": {
+      "total_videos": 14,
+      "included_count": 11,
+      "excluded_count": 3,
+      "excluded_videos": [
+        {
+          "id": "abc123",
+          "title": "Video Title",
+          "reason": "Video je soukromé",
+          "status": "private"
+        }
+      ]
+    }
   }
 }
 ```

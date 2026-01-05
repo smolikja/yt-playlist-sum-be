@@ -2,11 +2,13 @@
 Pydantic models for API request/response schemas.
 """
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 import uuid
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 from fastapi_users import schemas
+
+from app.models.enums import VideoStatus
 
 
 class PlaylistRequest(BaseModel):
@@ -36,10 +38,33 @@ class SummaryContent(BaseModel):
     model_config = ConfigDict(frozen=True)
 
 
+class ExcludedVideo(BaseModel):
+    """Video that was excluded from summarization."""
+
+    id: str
+    title: Optional[str] = None
+    reason: str  # Human-readable reason
+    status: VideoStatus
+
+    model_config = ConfigDict(frozen=True)
+
+
+class ExclusionReport(BaseModel):
+    """Report of videos excluded from summarization."""
+
+    total_videos: int
+    included_count: int
+    excluded_count: int
+    excluded_videos: List[ExcludedVideo] = Field(default_factory=list)
+
+    model_config = ConfigDict(frozen=True)
+
+
 class SummaryResult(SummaryContent):
     """Result model for playlist summarization including conversation ID."""
 
     conversation_id: str
+    exclusion_report: Optional[ExclusionReport] = None
 
     model_config = ConfigDict(frozen=True)
 

@@ -13,6 +13,8 @@ from typing import List, Optional
 from loguru import logger
 
 from app.models import PlaylistRequest, SummaryResult, MessageRole, LLMRole
+from app.models.api import ExcludedVideo, ExclusionReport
+from app.models.enums import VideoStatus
 from app.models.sql import ConversationModel, MessageModel
 from app.services.youtube import YouTubeService
 from app.services.ingestion import IngestionService
@@ -124,10 +126,30 @@ class ChatService:
         # 2. Fetch Transcripts
         playlist = await self.youtube_service.fetch_transcripts(playlist)
 
-        valid_videos = [v for v in playlist.videos if v.transcript]
+        # Use is_usable to filter valid videos (includes transcript OR good description)
+        valid_videos = [v for v in playlist.videos if v.is_usable]
         if not valid_videos:
-            logger.warning("No valid transcripts found.")
+            logger.warning("No usable content found in any videos.")
             raise NotFoundError("transcripts", url_str)
+
+        # Build exclusion report
+        excluded_videos = []
+        for v in playlist.videos:
+            if not v.is_usable:
+                reason = self._get_exclusion_reason(v.status, v.status_detail)
+                excluded_videos.append(ExcludedVideo(
+                    id=v.id,
+                    title=v.title,
+                    reason=reason,
+                    status=v.status,
+                ))
+        
+        exclusion_report = ExclusionReport(
+            total_videos=len(playlist.videos),
+            included_count=len(valid_videos),
+            excluded_count=len(excluded_videos),
+            excluded_videos=excluded_videos,
+        ) if excluded_videos else None
 
         # 3. Generate Summary (adaptive: direct for single video, Map-Reduce for playlist)
         is_single_video = len(valid_videos) == 1
@@ -136,6 +158,10 @@ class ChatService:
         else:
             logger.info(f"Generating summary using Map-Reduce for {len(valid_videos)} videos...")
         summary_markdown = await self.summarization_service.summarize_playlist(playlist)
+
+        # Append exclusion section to summary if there are excluded videos
+        if exclusion_report and exclusion_report.excluded_count > 0:
+            summary_markdown = self._append_exclusion_section(summary_markdown, exclusion_report)
 
         # 4. Index Transcripts for RAG
         logger.info("Indexing transcripts for RAG...")
@@ -165,6 +191,7 @@ class ChatService:
                 playlist_title=playlist.title,
                 video_count=len(playlist.videos),
                 summary_markdown=summary_markdown,
+                exclusion_report=exclusion_report,
             )
             logger.info(f"Saved conversation {conversation.id} for user {user_id}")
 
@@ -183,6 +210,34 @@ class ChatService:
             raise InternalServerError("Failed to save conversation.")
 
         return final_summary_result
+
+    def _get_exclusion_reason(self, status: VideoStatus, detail: Optional[str]) -> str:
+        """Get human-readable exclusion reason based on status."""
+        reason_map = {
+            VideoStatus.NO_CONTENT: "Žádný přepis ani popis není k dispozici",
+            VideoStatus.PRIVATE: "Video je soukromé",
+            VideoStatus.BLOCKED: "Přístup zablokován (IP omezení)",
+            VideoStatus.ERROR: "Chyba při zpracování",
+            VideoStatus.FALLBACK_DESCRIPTION: "Použit pouze popis videa",
+        }
+        base_reason = reason_map.get(status, "Neznámý důvod")
+        if detail and status == VideoStatus.ERROR:
+            return f"{base_reason}: {detail[:100]}"
+        return base_reason
+
+    def _append_exclusion_section(self, summary: str, report: ExclusionReport) -> str:
+        """Append exclusion section to summary markdown."""
+        section = "\n\n---\n\n## ⚠️ Vyloučená videa\n\n"
+        section += f"Do sumarizace nebylo zahrnuto **{report.excluded_count}** z {report.total_videos} videí:\n\n"
+        section += "| Video | Důvod |\n|-------|-------|\n"
+        
+        for video in report.excluded_videos:
+            title = video.title or video.id
+            # Escape pipe characters in title
+            title = title.replace("|", "\\|")
+            section += f"| {title} | {video.reason} |\n"
+        
+        return summary + section
 
     async def process_message(
         self,

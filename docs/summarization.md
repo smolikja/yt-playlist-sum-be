@@ -97,6 +97,38 @@ The service uses distinct system prompts for each context:
 *   **Map Phase (`MAP_PHASE`):** Used for chunks of videos in the Map-Reduce strategy. Focuses on consolidating key points from a segment of the playlist.
 *   **Reduce Phase (`REDUCE_PHASE`):** Synthesizes multiple summaries (from the Map phase) into a cohesive global summary, identifying overarching themes.
 
+## Video Exclusion Tracking
+
+Not all videos in a playlist may be usable for summarization. The service tracks each video's status:
+
+| Status | Description | Included in Summary? |
+|--------|-------------|---------------------|
+| `success` | Full transcript available | ✅ Yes |
+| `fallback_description` | Using video description (> 50 chars) | ✅ Yes |
+| `no_content` | No transcript AND description too short | ❌ No |
+| `private` | Video is private | ❌ No |
+| `blocked` | IP blocked by YouTube | ❌ No |
+| `error` | Processing error | ❌ No |
+
+**Exclusion Report Output:**
+
+When videos are excluded, the summary includes:
+1. An `exclusion_report` field in the API response with structured data
+2. A markdown section appended to the summary:
+
+```markdown
+---
+
+## ⚠️ Vyloučená videa
+
+Do sumarizace nebylo zahrnuto **3** z 14 videí:
+
+| Video | Důvod |
+|-------|-------|
+| Video Title 1 | Video je soukromé |
+| Video Title 2 | Žádný přepis ani popis není k dispozici |
+```
+
 ## Future Improvements
 
 *   **Parallel Execution:** The Map phase currently runs sequentially (or semi-sequentially via loop) to respect strict Rate Limits. With higher tier API quotas, this can be parallelized using `asyncio.gather`.
